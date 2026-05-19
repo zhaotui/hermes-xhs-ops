@@ -55,8 +55,8 @@ ln -s /mnt/c/Users/yxkj/Desktop/work/xhs ~/.hermes/skills/xhs
 ## WebBridge
 
 ```bash
-# WSL 中访问 Windows 上的 WebBridge
-WEBBRIDGE_BASE="http://172.26.240.1:10086"
+# WSL 中动态获取 Windows 网关 IP
+WEBBRIDGE_BASE="http://$(ip route | awk '/default/ {print $3; exit}'):10086"
 curl -s "$WEBBRIDGE_BASE/status"
 ```
 
