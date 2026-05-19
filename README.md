@@ -22,13 +22,20 @@ xhs/                       ← Plugin 根目录（可直接 install）
 ## 安装
 
 ```bash
-# Plugin（一条命令）
+# 一条命令装 Plugin
 hermes plugins install https://github.com/xxx/xhs-ops.git
 hermes plugins enable xhs
 
-# Skills（手动）
-git clone https://github.com/xxx/xhs-ops.git ~/xhs-ops
-ln -s ~/xhs-ops/skills ~/.hermes/skills/xhs
+# Skills 发布后也可一键安装
+hermes skills install https://github.com/xxx/xhs-ops.git/skills/xhs-read-comments/SKILL.md
+```
+
+## 开发（本机）
+
+```bash
+# 软链接免复制，改代码即时生效
+ln -s /mnt/c/Users/yxkj/Desktop/work/xhs/skills ~/.hermes/skills/xhs
+ln -s /mnt/c/Users/yxkj/Desktop/work/xhs /usr/local/lib/hermes-agent/plugins/xhs
 ```
 
 ## 工具
