@@ -43,38 +43,79 @@ curl -s -X POST "$WEBBRIDGE_BASE/command" \
 }
 ```
 
-## Reply
+## Reply Flow (Note Detail Page)
 
-Open:
+This flow assumes you are already on the note detail page (`www.xiaohongshu.com/explore/...`). If not, follow `xhs-read-comments` "View Note Detail" flow first.
 
-```text
-https://www.xiaohongshu.com/notification
+### 1. Find the Commenter's Reply Button
+
+"回复" text appears for EVERY comment. Must click the correct one — use position matching:
+
+```javascript
+(() => {
+  const all = document.querySelectorAll('*');
+  const replyEls = [];
+  all.forEach(el => {
+    if ((el.innerText || '') === '回复' && el.offsetParent) {
+      replyEls.push({el, top: Math.round(el.getBoundingClientRect().top)});
+    }
+  });
+  // Sort by vertical position, take the LAST one (bottom-most = target commenter)
+  replyEls.sort((a, b) => a.top - b.top);
+  const target = replyEls[replyEls.length - 1];
+  const rect = target.el.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  target.el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+  target.el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: x, clientY: y }));
+  target.el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y, button: 0 }));
+  return 'clicked reply at top=' + target.top;
+})()
 ```
 
-Use `评论和@`.
+### 2. Fill Reply Text
 
-Reply path:
+The reply input is a `P.content-input` (paragraph, not textarea). Use native setters:
 
-1. Find `.container` containing `authorName`, `commentText`, and `评论了你的笔记`.
-2. Click `.action-reply` inside it.
-3. Wait 500ms.
-4. Fill `textarea.comment-input`.
-5. Click `button.submit` in the same `.comment-wrapper`.
-6. Success when textarea disappears and no `失败/错误/频繁/稍后再试` appears.
-
-## Default Reply Text
-
-If enough information was collected:
-
-```text
-收到，我先记录下来了～
+```javascript
+(() => {
+  const el = document.querySelector('P.content-input');
+  if (!el) return 'input not found';
+  el.focus();
+  el.innerText = '回复内容';
+  el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+  return 'filled';
+})()
 ```
 
-If useful but missing fields:
+### 3. Click Send
 
-```text
-收到，可以再补充一下{缺失字段}，我好记录完整～
+The "发送" button appears after the input. Click the last one on the page:
+
+```javascript
+(() => {
+  const all = document.querySelectorAll('*');
+  for (const el of all) {
+    if ((el.innerText || '').trim() === '发送' && el.offsetParent && el.tagName === 'BUTTON') {
+      el.click();
+      return 'clicked';
+    }
+  }
+  return 'not found';
+})()
 ```
+
+### 4. Verify
+
+Wait 2s, check page content for your reply text next to the target commenter's name.
+
+## Pitfalls
+
+- **Clicking the wrong "回复"**: Each comment has a "回复" text. The bottom-most one corresponds to the last commenter. Always sort by vertical position and pick the last one.
+- **Input is a paragraph, not textarea**: Use `el.innerText = '...'` not `el.value`.
+- **Reply appears as nested**: A successful reply shows as `momo 作者\n回复内容\n刚刚` immediately below the target comment.
+- Do NOT reply from the notification page — it doesn't show whether you already replied.
+- Always verify the reply landed on the correct commenter.
 
 ## Output
 
