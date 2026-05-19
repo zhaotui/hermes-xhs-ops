@@ -160,7 +160,7 @@ Contenteditable:
 Do not call the screenshot API directly for full pages because it returns large base64 data. Use the helper script:
 
 ```bash
-bash /root/.hermes/skills/browser/kimi-webbridge/scripts/screenshot.sh -s SESSION_NAME
+bash /root/.hermes/skills/xhs/kimi-webbridge/scripts/screenshot.sh -s SESSION_NAME
 ```
 
 The helper script requires `jq`. If `jq` is not installed, fall back to a selector screenshot of the relevant area:
