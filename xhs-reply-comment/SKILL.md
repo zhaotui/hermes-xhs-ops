@@ -1,69 +1,30 @@
 ---
 name: xhs-reply-comment
-description: Use Kimi WebBridge to reply to Xiaohongshu comments on note detail page.
+description: 在小红书笔记详情页回复评论。
 ---
 
 # XHS Reply Comment
 
-Use this skill for replying to Xiaohongshu comments on the note detail page (NOT the notification page).
+> **依赖 Plugin:** `xhs` (提供 `xhs_reply_comment` 工具)
+> **前置:** 必须先通过 `xhs_view_note_detail()` 进入笔记详情页
 
-> **Prerequisite:** Load `kimi-webbridge` skill for WebBridge setup and snippet library.
-> All snippets referenced below are defined in kimi-webbridge `## Reusable Snippets`.
+## 流程
 
-## Input
+1. 确认已在详情页，且该评论没有你的作者回复
+2. **调 `xhs_reply_comment(reply_text="回复内容")`** — 自动找目标评论的"回复"按钮、填文本、发送、验证
 
-```json
-{
-  "authorName": "昵称",
-  "commentText": "评论原文",
-  "replyText": "回复内容"
-}
+## 陷阱
+
+- 必须先调 `xhs_view_note_detail`，不能在通知页回复
+- 每个评论都有"回复"按钮，插件自动选最后一个（最新的评论）
+- 回复前检查详情页里是否已经有 `作者` 标识的回复
+
+## 输出
+
 ```
-
-## Reply Flow
-
-> **Must be on the note detail page** (`www.xiaohongshu.com/explore/...`).
-> If not, follow `xhs-read-comments` "View Note Detail" to get there first.
-
-1. **Click the target comment's "回复" button** — run `snippet:position-click`:
-   - `TARGET_TEXT` = `"回复"`
-   - `POSITION` = `targets.length - 1` (bottommost = last commenter's button)
-   - **Why last:** each comment has its own "回复", the bottommost matches the last visible commenter
-
-2. **Fill reply text** — run `snippet:fill-paragraph`:
-   - `REPLY_TEXT` = the reply content from input
-
-3. **Click send** — run `snippet:click-send`
-
-4. **Verify** — wait 2s, check page content. Reply should appear as `momo 作者\n回复内容\n刚刚` immediately below the target comment.
-
-## Before Replying: Check Note Detail
-
-Notification page does NOT show whether you already replied. Always:
-1. Follow `xhs-read-comments` "View Note Detail" to open note detail
-2. Look for your username with `作者` badge in comment list
-3. Only reply if no author reply exists for that commenter
-
-## Output
-
-```text
 回帖结果：
 用户：【authorName】
-评论：【commentText】
+评论：【commentText】  
 回复：【replyText】
 状态：【成功/失败】
 ```
-
-## Pitfalls
-
-- **Wrong "回复" button**: Each comment has one. Use `snippet:position-click` with bottommost position.
-- **Input is P.content-input**: Use `el.innerText` not `el.value`.
-- **Reply from detail page only**: Notification page doesn't support replying.
-- Always verify the reply landed on the correct commenter.
-
-## Hard Rules
-
-- Do not reply to ignored comments or mass-message strangers
-- Do not bypass captcha
-- Stop if WebBridge unreachable
-- Always check detail page to confirm not already replied
