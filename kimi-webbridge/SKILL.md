@@ -226,3 +226,179 @@ For 小红书 long-form publishing, read `references/xiaohongshu-workflow.md` be
 ## WebBridge 实战模式
 
 Common pitfalls and proven patterns: `references/webbridge-patterns.md`. Covers JSON quoting workarounds, new-tab navigation via `find_tab`, snapshot ref lifecycle, and React page click dispatching.
+
+## Reusable Snippets
+
+These are pre-verified code fragments shared by business skills (xhs-*, etc.). Use them by name — do NOT rewrite inline.
+
+### bash-eval
+
+Pass JS to `evaluate` safely (handles Chinese, quotes, regex). Write JS to temp file, then send via python3 JSON encoding.
+
+```bash
+cat > /tmp/eval.js << 'JSEOF'
+(() => { /* your JS here */ })()
+JSEOF
+CODE=$(cat /tmp/eval.js)
+curl -s -X POST "$WEBBRIDGE" -H 'Content-Type: application/json' \
+  -d "$(python3 -c "import json,sys; print(json.dumps({'action':'evaluate','args':{'code':sys.argv[1]},'session':'SESSION_NAME'}))" "$CODE")"
+```
+
+### snippet:click-react
+
+Click an element on a React SPA page. Plain `.click()` won't work — must dispatch full pointer event sequence.
+
+```javascript
+(() => {
+  const el = /* get your element */;
+  const rect = el.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+  el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: x, clientY: y }));
+  el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y, button: 0 }));
+  return 'clicked';
+})()
+```
+
+### snippet:cover-list
+
+List cover images on 小红书 creator note manager page. Returns `{i, src, w, h, top}` for each.
+
+```javascript
+(() => {
+  const imgs = document.querySelectorAll('img.content');
+  const results = [];
+  imgs.forEach((img, i) => {
+    const rect = img.getBoundingClientRect();
+    results.push({ i, src: img.src, w: Math.round(rect.width), h: Math.round(rect.height), top: Math.round(rect.top) });
+  });
+  return JSON.stringify(results);
+})()
+```
+
+### snippet:click-cover
+
+Click the N-th cover image (0-indexed) on 小红书 creator note manager. Opens note detail in new tab.
+
+```javascript
+(() => {
+  const img = document.querySelectorAll('img.content')[INDEX];
+  const rect = img.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  img.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+  img.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: x, clientY: y }));
+  img.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y, button: 0 }));
+  return 'clicked cover[' + INDEX + ']';
+})()
+```
+
+### snippet:find-tab-bind
+
+After clicking opens a new tab, locate and bind it to the session. Two-step: find first, then activate.
+
+```bash
+# Step 1: find the new tab
+curl -s -X POST "$WEBBRIDGE" -H 'Content-Type: application/json' \
+  -d '{"action":"find_tab","args":{"url":"URL_PATTERN","active":false},"session":"SESSION_NAME"}'
+
+# Step 2: bind (activate)
+curl -s -X POST "$WEBBRIDGE" -H 'Content-Type: application/json' \
+  -d '{"action":"find_tab","args":{"url":"URL_PATTERN","active":true},"session":"SESSION_NAME"}'
+```
+
+### snippet:position-click
+
+When multiple elements share the same text (e.g. multiple "回复" buttons), click the one at a specific vertical position.
+
+```javascript
+(() => {
+  const all = document.querySelectorAll('*');
+  const targets = [];
+  all.forEach(el => {
+    if ((el.innerText || '') === 'TARGET_TEXT' && el.offsetParent) {
+      targets.push({ el, top: Math.round(el.getBoundingClientRect().top) });
+    }
+  });
+  targets.sort((a, b) => a.top - b.top);
+  const target = targets[POSITION]; // 0 = topmost, last = bottommost
+  const rect = target.el.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  target.el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+  target.el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: x, clientY: y }));
+  target.el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y, button: 0 }));
+  return 'clicked ' + TARGET_TEXT + ' at top=' + target.top;
+})()
+```
+
+### snippet:fill-paragraph
+
+Fill a `P.content-input` (小红书 comment reply box). This is a paragraph element, NOT a textarea.
+
+```javascript
+(() => {
+  const el = document.querySelector('P.content-input');
+  if (!el) return 'input not found';
+  el.focus();
+  el.innerText = 'REPLY_TEXT';
+  el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+  return 'filled';
+})()
+```
+
+### snippet:click-send
+
+Click the "发送" button on 小红书 comment reply form. Uses the last matching button on the page.
+
+```javascript
+(() => {
+  const all = document.querySelectorAll('*');
+  for (const el of all) {
+    if ((el.innerText || '').trim() === '发送' && el.offsetParent && el.tagName === 'BUTTON') {
+      el.click();
+      return 'clicked';
+    }
+  }
+  return 'not found';
+})()
+```
+
+### snippet:switch-comment-tab
+
+Switch 小红书 notification page from "赞和收藏" to "评论和@" tab.
+
+```javascript
+(() => {
+  const spans = document.querySelectorAll("span");
+  for (const s of spans) {
+    if (s.innerText === "评论和@" && s.offsetParent !== null) { s.click(); return "clicked"; }
+  }
+  return "not found";
+})()
+```
+
+### snippet:parse-comments
+
+Extract "评论了你的笔记" items from 小红书 notification page via body text parsing (`.container` selector is unreliable).
+
+```javascript
+(() => {
+  const items = [];
+  const allText = document.body.innerText;
+  const sections = allText.split(/\n(?=\S+\n评论了你的笔记)/);
+  for (const section of sections) {
+    if (!section.includes("评论了你的笔记")) continue;
+    const lines = section.split("\n").map(x => x.trim()).filter(Boolean);
+    const authorName = lines[0] || "";
+    const actionIdx = lines.findIndex(x => x.startsWith("评论了你的笔记"));
+    if (actionIdx < 0) continue;
+    const timeText = lines[actionIdx].replace("评论了你的笔记", "").trim();
+    const commentText = lines[actionIdx + 1] || "";
+    if (!authorName || !commentText || commentText === "回复") continue;
+    items.push({ authorName, timeText, text: commentText });
+  }
+  return JSON.stringify(items);
+})()
+```
