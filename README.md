@@ -1,6 +1,6 @@
 # XHS Ops — 小红书运营插件
 
-一个完整的 Hermes Plugin 项目，5 个工具 + 配套 Skills。
+一个完整的 Hermes Plugin 项目，6 个工具 + 配套 Skills（发帖、读评论、回复、收集、删帖、WebBridge 浏览器自动化）。
 
 ## 项目结构
 
@@ -15,7 +15,8 @@ xhs/                       ← Plugin 根目录（可直接 install）
 │   ├── xhs-read-comments/  → 读评论 → 看详情
 │   ├── xhs-reply-comment/  → 回复评论
 │   ├── xhs-collect-info/   → 分类收集信息
-│   └── xhs-publish-post/   → 发布笔记
+│   ├── xhs-publish-post/   → 发布笔记
+│   └── xhs-delete-post/    → 删帖清理
 └── README.md
 ```
 
@@ -46,7 +47,8 @@ ln -s /mnt/c/Users/yxkj/Desktop/work/xhs /usr/local/lib/hermes-agent/plugins/xhs
 | `xhs_view_note_detail(note_index)` | 打开笔记前端详情页 |
 | `xhs_reply_comment(reply_text)` | 在详情页回复评论 |
 | `xhs_collect_info(...)` | 分类评论，保存 JSONL |
-| `xhs_publish_post(title, body)` | 发布笔记（待实现） |
+| `xhs_publish_post(title, body)` | 发布笔记（实际由 WebBridge workflow 完成） |
+| `xhs_delete_post()` | 删除笔记（实际由 WebBridge evaluate 完成） |
 
 ## 流程示例
 
