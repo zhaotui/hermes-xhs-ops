@@ -16,6 +16,7 @@ ln -s /mnt/c/Users/yxkj/Desktop/work/xhs ~/.hermes/skills/xhs
 
 | Skill | 功能 | 依赖 |
 |-------|------|------|
+| `kimi-webbridge` | WSL2 控制 Windows 浏览器（通用） | WebBridge |
 | `xhs-read-comments` | 读取通知页评论 + 进入笔记详情页 | WebBridge |
 | `xhs-collect-info` | 分类评论、收集信息、保存记录 | 无（纯数据处理） |
 | `xhs-reply-comment` | 在笔记详情页回复评论 | WebBridge |
