@@ -16,6 +16,7 @@
 
 import json
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -26,16 +27,33 @@ BODY = ""
 DESCRIPTION = ""
 VISIBILITY = "private"
 AUTO_PUBLISH = True
+PUBLISH_URL = "https://creator.xiaohongshu.com/publish/publish?source=official&from=menu&target=article"
+TEMPLATE = ""
+PREVIEW_TAB = ""
+SAVE_DRAFT = False
+SKIP_FORMAT = False
+ALLOW_COLLAB = None
+ALLOW_COPY = None
+ORIGINAL = None
+CLICK_ITEMS = []
+LOCATION = ""
+VISIBILITY_USERS = []
+CONTENT_TYPE = ""
+SOURCE_TYPE = ""
+IMAGES = []
 SESSION = "xiaohongshu-auto"
 
 
-WIN_HOST = subprocess.run(
-    "ip route | awk '/default/ {print $3; exit}'",
-    shell=True,
-    capture_output=True,
-    text=True,
-).stdout.strip()
-WB = f"http://{WIN_HOST}:10086/command"
+WEBBRIDGE_BASE = os.environ.get("WEBBRIDGE_BASE", "").rstrip("/")
+if not WEBBRIDGE_BASE:
+    WIN_HOST = subprocess.run(
+        "ip route | awk '/default/ {print $3; exit}'",
+        shell=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    WEBBRIDGE_BASE = f"http://{WIN_HOST}:10086"
+WB = f"{WEBBRIDGE_BASE}/command"
 
 
 JS_HELPERS = r"""
@@ -110,6 +128,18 @@ const clickByText = (text, options = {}) => {
   if (!el) return { ok: false, reason: `未找到：${text}` };
   clickElement(el);
   return { ok: true, text };
+};
+
+const clickByTextSearch = (text, options = {}) => {
+  for (let i = 0; i < 12; i++) {
+    const el = findClickableByText(text, options);
+    if (el) {
+      clickElement(el);
+      return { ok: true, text };
+    }
+    scrollDown();
+  }
+  return { ok: false, reason: `未找到：${text}` };
 };
 
 const scrollDown = () => {
@@ -236,6 +266,15 @@ def step(name, action, verify, timeout=18):
     result_value = value(result)
     if result_value:
         print(result_value[:300], flush=True)
+    try:
+        parsed = json.loads(result_value)
+    except Exception:
+        parsed = None
+    if isinstance(parsed, dict) and parsed.get("ok") is False and not parsed.get("wait"):
+        print(f"{name}失败", flush=True)
+        print(f"原因：{parsed.get('reason', result_value)}", flush=True)
+        print(f"当前页面：{page_excerpt()}", flush=True)
+        sys.exit(1)
     time.sleep(1.2)
     if not wait_until(name, verify, timeout=timeout):
         print(f"{name}失败", flush=True)
@@ -250,6 +289,20 @@ def load_payload():
     parser.add_argument("--body", default="")
     parser.add_argument("--description", default="")
     parser.add_argument("--visibility", default="")
+    parser.add_argument("--url", default="")
+    parser.add_argument("--template", default="")
+    parser.add_argument("--preview-tab", default="")
+    parser.add_argument("--click", action="append", default=[])
+    parser.add_argument("--location", default="")
+    parser.add_argument("--visibility-user", action="append", default=[])
+    parser.add_argument("--content-type", default="")
+    parser.add_argument("--source-type", default="")
+    parser.add_argument("--image", action="append", default=[])
+    parser.add_argument("--allow-collab", default="")
+    parser.add_argument("--allow-copy", default="")
+    parser.add_argument("--original", default="")
+    parser.add_argument("--save-draft", default="")
+    parser.add_argument("--skip-format", action="store_true")
     parser.add_argument("--session", default="")
     parser.add_argument("--auto-publish", default="")
     parser.add_argument("--json", default="")
@@ -271,6 +324,34 @@ def load_payload():
         payload["description"] = args.description
     if args.visibility:
         payload["visibility"] = args.visibility
+    if args.url:
+        payload["url"] = args.url
+    if args.template:
+        payload["template"] = args.template
+    if args.preview_tab:
+        payload["previewTab"] = args.preview_tab
+    if args.click:
+        payload["clickItems"] = args.click
+    if args.location:
+        payload["location"] = args.location
+    if args.visibility_user:
+        payload["visibilityUsers"] = args.visibility_user
+    if args.content_type:
+        payload["contentType"] = args.content_type
+    if args.source_type:
+        payload["sourceType"] = args.source_type
+    if args.image:
+        payload["images"] = args.image
+    if args.allow_collab:
+        payload["allowCollab"] = args.allow_collab
+    if args.allow_copy:
+        payload["allowCopy"] = args.allow_copy
+    if args.original:
+        payload["original"] = args.original
+    if args.save_draft:
+        payload["saveDraft"] = args.save_draft
+    if args.skip_format:
+        payload["skipFormat"] = True
     if args.session:
         payload["session"] = args.session
     if args.auto_publish:
@@ -290,7 +371,10 @@ def parse_bool(value, default):
 
 
 def apply_payload(payload):
-    global TITLE, BODY, DESCRIPTION, VISIBILITY, AUTO_PUBLISH, SESSION
+    global TITLE, BODY, DESCRIPTION, VISIBILITY, AUTO_PUBLISH, PUBLISH_URL
+    global TEMPLATE, PREVIEW_TAB, SAVE_DRAFT, SKIP_FORMAT, ALLOW_COLLAB
+    global ALLOW_COPY, ORIGINAL, CLICK_ITEMS, LOCATION, VISIBILITY_USERS
+    global CONTENT_TYPE, SOURCE_TYPE, IMAGES, SESSION
 
     TITLE = str(payload.get("title") or payload.get("xhsTitle") or "").strip()
     BODY = str(payload.get("body") or payload.get("longBody") or "").strip()
@@ -299,6 +383,26 @@ def apply_payload(payload):
     ).strip()
     VISIBILITY = str(payload.get("visibility") or VISIBILITY).strip()
     AUTO_PUBLISH = parse_bool(payload.get("autoPublish"), AUTO_PUBLISH)
+    PUBLISH_URL = str(payload.get("url") or payload.get("publishUrl") or PUBLISH_URL).strip()
+    TEMPLATE = str(payload.get("template") or "").strip()
+    PREVIEW_TAB = str(payload.get("previewTab") or "").strip()
+    SAVE_DRAFT = parse_bool(payload.get("saveDraft"), SAVE_DRAFT)
+    SKIP_FORMAT = parse_bool(payload.get("skipFormat"), SKIP_FORMAT)
+    ALLOW_COLLAB = payload.get("allowCollab")
+    ALLOW_COPY = payload.get("allowCopy")
+    ORIGINAL = payload.get("original")
+    CLICK_ITEMS = payload.get("clickItems") or payload.get("clicks") or []
+    if isinstance(CLICK_ITEMS, str):
+        CLICK_ITEMS = [CLICK_ITEMS]
+    LOCATION = str(payload.get("location") or "").strip()
+    VISIBILITY_USERS = payload.get("visibilityUsers") or payload.get("visibilityUser") or []
+    if isinstance(VISIBILITY_USERS, str):
+        VISIBILITY_USERS = [VISIBILITY_USERS]
+    CONTENT_TYPE = str(payload.get("contentType") or "").strip()
+    SOURCE_TYPE = str(payload.get("sourceType") or "").strip()
+    IMAGES = payload.get("images") or payload.get("image") or []
+    if isinstance(IMAGES, str):
+        IMAGES = [IMAGES]
     SESSION = str(payload.get("session") or SESSION).strip()
 
     missing = []
@@ -377,7 +481,14 @@ return (hasPublish && (hasVisibility || hasDesc || hasPublishEditor)) || hasPubl
 
 
 def set_visibility():
-    if VISIBILITY not in ("private", "public"):
+    visibility_text = {
+        "private": "仅自己可见",
+        "public": "公开可见",
+        "friends": "仅互关好友可见",
+        "include": "只给谁看",
+        "exclude": "不给谁看",
+    }.get(VISIBILITY, "")
+    if not visibility_text:
         return ev(js("""
 return JSON.stringify({ ok: true, skipped: true });
 """))
@@ -388,21 +499,21 @@ return JSON.stringify({ ok: true, visibility: 'public' });
     return ev(f"""
 (async () => {{
 {JS_HELPERS}
+  const targetText = {json.dumps(visibility_text, ensure_ascii=False)};
   for (let i = 0; i < 10; i++) {{
-    const privateOption = findClickableByText('仅自己可见', {{ exact: false }});
-    if (privateOption) {{
-      clickElement(privateOption);
-      return JSON.stringify({{ ok: true, visibility: 'private' }});
+    const selectedOption = findClickableByText(targetText, {{ exact: false }});
+    if (selectedOption) {{
+      clickElement(selectedOption);
+      return JSON.stringify({{ ok: true, visibility: targetText }});
     }}
     const publicOption = findClickableByText('公开可见', {{ exact: false }});
     if (publicOption) {{
       clickElement(publicOption);
       await new Promise(resolve => setTimeout(resolve, 500));
-      const openedPrivateOption = findClickableByText('仅自己可见', {{ exact: false }}) ||
-        findClickableByText('私密', {{ exact: false }});
-      if (openedPrivateOption) {{
-        clickElement(openedPrivateOption);
-        return JSON.stringify({{ ok: true, visibility: 'private' }});
+      const openedOption = findClickableByText(targetText, {{ exact: false }});
+      if (openedOption) {{
+        clickElement(openedOption);
+        return JSON.stringify({{ ok: true, visibility: targetText }});
       }}
     }}
     scrollDown();
@@ -413,15 +524,81 @@ return JSON.stringify({ ok: true, visibility: 'public' });
 """)
 
 
+def select_visibility_users():
+    if VISIBILITY not in ("include", "exclude") or not VISIBILITY_USERS:
+        return ev(js("""
+return JSON.stringify({ ok: true, skipped: true });
+"""))
+    return ev(f"""
+(async () => {{
+{JS_HELPERS}
+  const users = {json.dumps(VISIBILITY_USERS, ensure_ascii=False)};
+  const setValue = (el, value) => {{
+    if (!el) return false;
+    if (el.isContentEditable) {{
+      fillEditable(el, value);
+      return true;
+    }}
+    setNativeValue(el, value);
+    return true;
+  }};
+  const results = [];
+  for (const user of users) {{
+    const input = Array.from(document.querySelectorAll('input, textarea, [contenteditable="true"]'))
+      .filter(visible)
+      .find(el => {{
+        const text = textOf(el.closest('div') || el);
+        const placeholder = el.getAttribute('placeholder') || '';
+        return placeholder.includes('搜索') || text.includes('搜索') || text.includes('用户');
+      }});
+    if (!input) return JSON.stringify({{ ok: false, reason: '未找到用户搜索框', results }});
+    setValue(input, user);
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    const option = Array.from(document.querySelectorAll('div, span, button'))
+      .filter(visible)
+      .map(el => ({{ el, text: textOf(el) }}))
+      .filter(x => x.text.includes(user) && !x.text.includes('已选择'))
+      .sort((a, b) => a.text.length - b.text.length)[0];
+    if (!option) return JSON.stringify({{ ok: false, reason: `未找到用户：${{user}}`, results }});
+    clickElement(findNearestClickable(option.el));
+    results.push(user);
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }}
+  const confirm = findClickableByText('确认', {{ exact: true }});
+  if (!confirm) return JSON.stringify({{ ok: false, reason: '未找到确认按钮', results }});
+  clickElement(confirm);
+  return JSON.stringify({{ ok: true, results }});
+}})()
+""")
+
+
+def visibility_users_done():
+    if VISIBILITY not in ("include", "exclude") or not VISIBILITY_USERS:
+        return True
+    r = ev(js("""
+const text = document.body.innerText;
+return text.includes('已选择0人') || text.includes('已选择 0/') ? '0' : '1';
+"""))
+    return value(r) == "1"
+
+
 def has_visibility():
-    if VISIBILITY != "private":
+    visibility_text = {
+        "private": "仅自己可见",
+        "public": "公开可见",
+        "friends": "仅互关好友可见",
+        "include": "只给谁看",
+        "exclude": "不给谁看",
+    }.get(VISIBILITY, "")
+    if not visibility_text:
         return True
     r = ev(f"""
 (async () => {{
 {JS_HELPERS}
+  const targetText = {json.dumps(visibility_text, ensure_ascii=False)};
   for (let i = 0; i < 4; i++) {{
     const text = document.body.innerText;
-    if (text.includes('仅自己可见') || text.includes('私密')) return '1';
+    if (text.includes(targetText)) return '1';
     scrollDown();
     await new Promise(resolve => setTimeout(resolve, 200));
   }}
@@ -500,9 +677,32 @@ return JSON.stringify({{ ok: true }});
 
 
 def click_format():
+    if SKIP_FORMAT:
+        r = ev(js("""
+const text = document.body.innerText;
+const alreadyReady = text.includes('选择模板') && !!findByText('下一步', { exact: true });
+return JSON.stringify({ ok: true, skipped: alreadyReady, alreadyReady });
+"""))
+        if '"alreadyReady":true' in value(r):
+            return r
     return ev(js("""
 return JSON.stringify(clickByText('一键排版', { exact: false }));
 """))
+
+
+def select_template():
+    if not TEMPLATE:
+        return ev(js("""
+return JSON.stringify({ ok: true, skipped: true });
+"""))
+    return ev(js(f"""
+const result = clickByTextSearch({json.dumps(TEMPLATE, ensure_ascii=False)}, {{ exact: true }});
+return JSON.stringify(result);
+"""))
+
+
+def has_template_selected():
+    return True
 
 
 def click_next():
@@ -536,6 +736,215 @@ if (!target) return JSON.stringify({{ ok: false, reason: '未找到描述输入�
 fillEditable(target, desc);
 return JSON.stringify({{ ok: true }});
 """))
+
+
+def set_switch(label, desired):
+    if desired is None:
+        return ev(js("""
+return JSON.stringify({ ok: true, skipped: true });
+"""))
+    desired_bool = parse_bool(desired, False)
+    return ev(js(f"""
+const label = {json.dumps(label, ensure_ascii=False)};
+const desired = {str(desired_bool).lower()};
+const card = Array.from(document.querySelectorAll('div, span'))
+  .filter(visible)
+  .find(el => textOf(el) === label);
+if (!card) return JSON.stringify({{ ok: false, skipped: true, reason: `未找到开关：${{label}}` }});
+const wrapper = card.closest('.custom-switch-wrapper, .wrapper, .custom-switch-card') || card;
+const text = textOf(wrapper);
+const active = wrapper.className.toString().includes('active') ||
+  wrapper.querySelector('[aria-checked="true"], .active, .checked, [class*="checked"]');
+if (!!active !== desired) clickElement(wrapper);
+return JSON.stringify({{ ok: true, label, desired }});
+"""))
+
+
+def apply_optional_settings():
+    results = []
+    if ORIGINAL is not None:
+        results.append(value(set_switch("原创声明", ORIGINAL)))
+    if ALLOW_COLLAB is not None:
+        results.append(value(set_switch("允许合拍", ALLOW_COLLAB)))
+    if ALLOW_COPY is not None:
+        results.append(value(set_switch("允许正文复制", ALLOW_COPY)))
+    for item in CLICK_ITEMS:
+        r = ev(js(f"""
+const result = clickByTextSearch({json.dumps(str(item), ensure_ascii=False)}, {{ exact: false }});
+return JSON.stringify(result);
+"""))
+        results.append(value(r))
+        time.sleep(0.5)
+    if PREVIEW_TAB:
+        r = ev(js(f"""
+const result = clickByTextSearch({json.dumps(PREVIEW_TAB, ensure_ascii=False)}, {{ exact: true }});
+return JSON.stringify(result);
+"""))
+        results.append(value(r))
+    return {"data": {"value": json.dumps({"ok": True, "results": results}, ensure_ascii=False)}}
+
+
+def optional_settings_done():
+    return True
+
+
+def set_location():
+    if not LOCATION:
+        return ev(js("""
+return JSON.stringify({ ok: true, skipped: true });
+"""))
+    return ev(f"""
+(async () => {{
+{JS_HELPERS}
+  const locationText = {json.dumps(LOCATION, ensure_ascii=False)};
+  const open = clickByTextSearch('添加地点', {{ exact: false }});
+  if (!open.ok) return JSON.stringify(open);
+  await new Promise(resolve => setTimeout(resolve, 800));
+  const input = document.querySelector('.address-card-select input') ||
+    Array.from(document.querySelectorAll('input, textarea, [contenteditable="true"]'))
+      .filter(visible)
+      .find(el => {{
+        const placeholder = el.getAttribute('placeholder') || '';
+        const text = textOf(el.closest('div') || el);
+        return placeholder.includes('搜索') || placeholder.includes('地点') || text.includes('搜索地点') || text.includes('请输入');
+      }});
+  if (!input) return JSON.stringify({{ ok: false, reason: '未找到地点搜索框' }});
+  if (input.isContentEditable) fillEditable(input, locationText);
+  else setNativeValue(input, locationText);
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  const option = Array.from(document.querySelectorAll('.d-grid-item, .option-item, div, span, button'))
+    .filter(visible)
+    .map(el => {{
+      const item = el.closest('.d-grid-item') || el;
+      return {{ el: item, text: textOf(el), itemText: textOf(item) }};
+    }})
+    .filter(x => x.text.includes(locationText) && !x.text.includes('搜索'))
+    .sort((a, b) => a.itemText.length - b.itemText.length)[0];
+  if (!option) return JSON.stringify({{ ok: false, reason: `未找到地点：${{locationText}}` }});
+  clickElement(findNearestClickable(option.el));
+  await new Promise(resolve => setTimeout(resolve, 1200));
+  return JSON.stringify({{ ok: true, location: locationText }});
+}})()
+""")
+
+
+def location_done():
+    if not LOCATION:
+        return True
+    r = ev(js(f"""
+const locationText = {json.dumps(LOCATION, ensure_ascii=False)};
+const card = document.querySelector('.address-card-select, .address-card-wrapper');
+const text = card ? textOf(card) : document.body.innerText;
+return text.includes(locationText) || !document.body.innerText.includes('添加地点') ? '1' : '0';
+"""))
+    return value(r) == "1"
+
+
+def select_dropdown_option(open_text, option_text):
+    if not option_text:
+        return ev(js("""
+return JSON.stringify({ ok: true, skipped: true });
+"""))
+    return ev(f"""
+(async () => {{
+{JS_HELPERS}
+  const openText = {json.dumps(open_text, ensure_ascii=False)};
+  const optionText = {json.dumps(option_text, ensure_ascii=False)};
+  const open = clickByTextSearch(openText, {{ exact: false }});
+  if (!open.ok) return JSON.stringify(open);
+  await new Promise(resolve => setTimeout(resolve, 600));
+  const option = Array.from(document.querySelectorAll('.d-grid-item, .custom-option, .option-item, div, span'))
+    .filter(visible)
+    .map(el => {{
+      const item = el.closest('.d-grid-item, .custom-option, .option-item') || el;
+      return {{ el: item, text: textOf(el), itemText: textOf(item) }};
+    }})
+    .filter(x => x.text.includes(optionText))
+    .sort((a, b) => a.itemText.length - b.itemText.length)[0];
+  if (!option) return JSON.stringify({{ ok: false, reason: `未找到选项：${{optionText}}` }});
+  clickElement(findNearestClickable(option.el));
+  await new Promise(resolve => setTimeout(resolve, 800));
+  return JSON.stringify({{ ok: true, option: optionText }});
+}})()
+""")
+
+
+def select_content_type():
+    return select_dropdown_option("添加内容类型声明", CONTENT_TYPE)
+
+
+def content_type_done():
+    if not CONTENT_TYPE:
+        return True
+    r = ev(js(f"""
+const text = document.body.innerText;
+return text.includes({json.dumps(CONTENT_TYPE, ensure_ascii=False)}) ? '1' : '0';
+"""))
+    return value(r) == "1"
+
+
+def select_source_type():
+    if not SOURCE_TYPE:
+        return select_dropdown_option("添加来源声明", SOURCE_TYPE)
+    r = select_dropdown_option("添加来源声明", SOURCE_TYPE)
+    try:
+        parsed = json.loads(value(r))
+    except Exception:
+        parsed = {}
+    if parsed.get("ok") is False:
+        return select_dropdown_option("添加内容类型声明", SOURCE_TYPE)
+    return r
+
+
+def source_type_done():
+    if not SOURCE_TYPE:
+        return True
+    r = ev(js(f"""
+const text = document.body.innerText;
+return text.includes({json.dumps(SOURCE_TYPE, ensure_ascii=False)}) ? '1' : '0';
+"""))
+    return value(r) == "1"
+
+
+def normalize_image_path(path):
+    p = str(path)
+    if len(p) > 2 and p[1] == ":":
+        drive = p[0].lower()
+        rest = p[2:].replace("\\", "/").lstrip("/")
+        return f"/mnt/{drive}/{rest}"
+    return p
+
+
+def open_image_upload_entry():
+    if not IMAGES:
+        return ev(js("""
+return JSON.stringify({ ok: true, skipped: true });
+"""))
+    return ev(js("""
+scrollToBottom();
+const entry = document.querySelector('.img-preview-area .entry');
+if (!entry) return JSON.stringify({ ok: false, reason: '未找到图片上传入口 .img-preview-area .entry' });
+clickElement(entry);
+return JSON.stringify({ ok: true });
+"""))
+
+
+def upload_images():
+    if not IMAGES:
+        return {"data": {"value": json.dumps({"ok": True, "skipped": True}, ensure_ascii=False)}}
+    files = [normalize_image_path(x) for x in IMAGES]
+    return wb("upload", {"selector": 'input[type="file"]', "files": files})
+
+
+def images_uploaded():
+    if not IMAGES:
+        return True
+    r = ev(js("""
+const text = document.body.innerText;
+const count = document.querySelectorAll('.img-preview-area img, .img-container img, img').length;
+return count > 0 || text.includes('图片生成中') || text.includes('获取封面建议') ? '1' : '0';
+"""))
+    return value(r) == "1"
 
 
 def publish():
@@ -603,6 +1012,34 @@ return JSON.stringify({ ok: true, mode: 'fallback' });
     return {"data": {"value": last or '{"ok":false,"reason":"发布超时"}'}}
 
 
+def save_draft():
+    if not SAVE_DRAFT:
+        return ev(js("""
+return JSON.stringify({ ok: true, skipped: true });
+"""))
+    return ev(js("""
+const publishRoots = deepQueryAll('xhs-publish-btn');
+for (const root of publishRoots) {
+  if (root.getAttribute('save-disabled') === 'true') {
+    return JSON.stringify({ ok: false, reason: '暂存按钮禁用' });
+  }
+  if (typeof root._onSave === 'function') {
+    root._onSave();
+    return JSON.stringify({ ok: true, mode: 'xhs-publish-btn._onSave' });
+  }
+  if (root.getAttribute('save-text') === '暂存离开') {
+    clickElement(root);
+    return JSON.stringify({ ok: true, mode: 'xhs-publish-btn-root' });
+  }
+}
+return JSON.stringify(clickByTextSearch('暂存离开', { exact: true }));
+"""))
+
+
+def save_draft_done():
+    return True
+
+
 def is_publish_done():
     if not AUTO_PUBLISH:
         return True
@@ -614,7 +1051,7 @@ def open_publish_page():
     result = wb(
         "navigate",
         {
-            "url": "https://creator.xiaohongshu.com/publish/publish?source=official&type=longresource",
+            "url": PUBLISH_URL,
             "newTab": True,
         },
     )
@@ -640,13 +1077,26 @@ return ok ? '1' : '0';
 if __name__ == "__main__":
     apply_payload(load_payload())
     open_publish_page()
-    step("切换长文", switch_longform, is_longform_home)
-    step("新建创作", click_new_creation, is_editor)
+    if not is_editor():
+        step("切换长文", switch_longform, is_longform_home)
+        step("新建创作", click_new_creation, is_editor)
     step("填写内容", fill_content, has_content)
     step("一键排版", click_format, is_template_step, timeout=35)
+    step("选择模板", select_template, has_template_selected)
     step("下一步", click_next, is_publish_page)
     step("填写描述", fill_description, has_description)
+    step("可选设置", apply_optional_settings, optional_settings_done)
+    step("内容类型声明", select_content_type, content_type_done)
+    step("来源声明", select_source_type, source_type_done)
+    step("打开图片上传", open_image_upload_entry, lambda: True)
+    step("上传图片", upload_images, images_uploaded)
+    step("设置地点", set_location, location_done)
+    if SAVE_DRAFT:
+        step("暂存离开", save_draft, save_draft_done)
+        print("已暂存", flush=True)
+        sys.exit(0)
     step("设置可见范围", set_visibility, has_visibility)
+    step("选择可见用户", select_visibility_users, visibility_users_done)
     step("发布", publish, is_publish_done, timeout=300)
     if AUTO_PUBLISH:
         print("发布成功", flush=True)

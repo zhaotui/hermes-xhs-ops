@@ -79,9 +79,51 @@ XHS_PUBLISH_POST_SCHEMA = {
             },
             "visibility": {
                 "type": "string",
-                "enum": ["public", "private"],
-                "description": "可见范围，默认 private（仅自己可见）",
+                "enum": ["public", "private", "friends", "include", "exclude"],
+                "description": "可见范围：public=公开, private=仅自己可见, friends=仅互关好友, include=只给谁看, exclude=不给谁看",
                 "default": "private",
+            },
+            "images": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "图片路径列表（Windows 或 WSL 路径均可）",
+            },
+            "location": {
+                "type": "string",
+                "description": "发布地点，如'北京'",
+            },
+            "template": {
+                "type": "string",
+                "description": "排版模板名称",
+            },
+            "content_type": {
+                "type": "string",
+                "description": "内容类型声明",
+            },
+            "source_type": {
+                "type": "string",
+                "description": "来源声明",
+            },
+            "allow_collab": {
+                "type": "boolean",
+                "description": "允许合拍",
+            },
+            "allow_copy": {
+                "type": "boolean",
+                "description": "允许正文复制",
+            },
+            "original": {
+                "type": "boolean",
+                "description": "原创声明",
+            },
+            "visibility_users": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "可见用户列表（visibility=include/exclude 时使用）",
+            },
+            "save_draft": {
+                "type": "boolean",
+                "description": "仅暂存不发布",
             },
         },
         "required": ["title", "body"],
@@ -432,16 +474,35 @@ def _handle_xhs_publish_post(args: dict, **kwargs) -> str:
 
     title = args.get("title", "")
     body = args.get("body", "")
-    visibility = args.get("visibility", "private")
 
     payload = {
         "title": title,
         "body": body,
         "description": title,
-        "visibility": visibility,
-        "autoPublish": True,
+        "visibility": args.get("visibility", "private"),
+        "autoPublish": not args.get("save_draft", False),
+        "saveDraft": args.get("save_draft", False),
         "session": "xhs",
     }
+
+    # 透传可选字段
+    field_map = {
+        "template": "template",
+        "content_type": "contentType",
+        "source_type": "sourceType",
+        "location": "location",
+        "allow_collab": "allowCollab",
+        "allow_copy": "allowCopy",
+        "original": "original",
+        "images": "images",
+        "visibility_users": "visibilityUsers",
+        "click_items": "clickItems",
+        "preview_tab": "previewTab",
+    }
+    for src, dst in field_map.items():
+        val = args.get(src)
+        if val is not None:
+            payload[dst] = val
 
     script = os.path.join(os.path.dirname(__file__), "scripts", "publish_auto.py")
 
