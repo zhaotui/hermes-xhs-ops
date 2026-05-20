@@ -273,6 +273,14 @@ def _handle_xhs_view_note_detail(args: dict, **kwargs) -> str:
 
         # Read page
         text = _eval(PAGE_TEXT)
+
+        # 校验是否真正打开了详情页（审核中帖子无法打开）
+        if "笔记管理" in text and "全部笔记" in text:
+            return tool_error(
+                f"无法打开笔记详情（索引 {note_index}）。"
+                "帖子可能处于审核中或未发布状态，请稍后再试。"
+            )
+
         return tool_result({"content": text, "note_index": note_index})
     except Exception as e:
         return tool_error(f"查看笔记详情失败: {e}")
@@ -284,6 +292,20 @@ def _handle_xhs_reply_comment(args: dict, **kwargs) -> str:
     if not reply_text:
         return tool_error("回复内容不能为空")
     try:
+        # 校验是否在笔记详情页
+        check_js = """(() => {
+          const text = document.body.innerText;
+          // 详情页标志：有"笔记详情"或发布时间+互动数据，且不在笔记管理页
+          const isManager = text.includes('笔记管理') && text.includes('全部笔记');
+          const isNotification = text.includes('通知') && text.includes('评论和@');
+          const hasDetail = text.includes('发布时间') || text.includes('发布于');
+          if (isManager || isNotification || !hasDetail) return 'not_detail';
+          return 'ok';
+        })()"""
+        page_check = _eval(check_js)
+        if page_check != "ok":
+            return tool_error("当前不在笔记详情页，请先调用 xhs_view_note_detail 打开笔记")
+
         # Click last "回复" button
         _eval(CLICK_REPLY)
         time.sleep(1)
