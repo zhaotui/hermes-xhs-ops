@@ -1,11 +1,12 @@
 """Xiaohongshu (小红书) operations plugin.
 
-Registers 5 tools into the ``xhs`` toolset:
+Registers 6 tools into the ``xhs`` toolset:
 - xhs_read_comments   — 读取通知页评论
 - xhs_view_note_detail — 打开笔记前端详情页
 - xhs_reply_comment    — 回复评论
 - xhs_publish_post     — 发布帖子
 - xhs_collect_info     — 分类收集信息
+- xhs_delete_post      — 删除仅自己可见帖
 
 Requires Kimi WebBridge running on Windows host.
 """

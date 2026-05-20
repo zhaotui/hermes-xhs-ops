@@ -111,6 +111,16 @@ XHS_COLLECT_INFO_SCHEMA = {
     },
 }
 
+XHS_DELETE_POST_SCHEMA = {
+    "name": "xhs_delete_post",
+    "description": "删除笔记管理页中所有'仅自己可见'的帖子（测试后清理）。先识别后删除，绝不误删公开帖。",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+    },
+}
+
 
 # ── helpers ───────────────────────────────────────────────────────────────
 
@@ -296,8 +306,45 @@ def _handle_xhs_reply_comment(args: dict, **kwargs) -> str:
 
 
 def _handle_xhs_publish_post(args: dict, **kwargs) -> str:
-    """Placeholder — not yet implemented."""
-    return tool_error("xhs_publish_post: 尚未实现，敬请期待")
+    """发布小红书长文，调用已验证的 publish_auto.py 脚本。"""
+    import os
+    import subprocess
+
+    title = args.get("title", "")
+    body = args.get("body", "")
+    visibility = args.get("visibility", "private")
+
+    payload = {
+        "title": title,
+        "body": body,
+        "description": title,
+        "visibility": visibility,
+        "autoPublish": True,
+        "session": "xhs",
+    }
+
+    script = os.path.join(os.path.dirname(__file__), "scripts", "publish_auto.py")
+
+    try:
+        result = subprocess.run(
+            ["python3", script, "--stdin-json"],
+            input=json.dumps(payload, ensure_ascii=False),
+            capture_output=True,
+            text=True,
+            timeout=360,
+        )
+        if result.returncode == 0:
+            return tool_result({
+                "success": True,
+                "title": title,
+                "visibility": visibility,
+                "stdout": result.stdout.strip().split("\n")[-3:],
+            })
+        return tool_error(f"发布失败 (exit={result.returncode}):\n{result.stderr or result.stdout}")
+    except subprocess.TimeoutExpired:
+        return tool_error("发布超时（超过6分钟）")
+    except Exception as e:
+        return tool_error(f"发布异常: {e}")
 
 
 def _handle_xhs_collect_info(args: dict, **kwargs) -> str:
@@ -376,6 +423,81 @@ def _handle_xhs_collect_info(args: dict, **kwargs) -> str:
     return tool_result({"collected": 0, "total": 0, "message": "本次没有收集到新的有效信息。"})
 
 
+def _handle_xhs_delete_post(args: dict, **kwargs) -> str:
+    """删除笔记管理页中所有仅自己可见的帖子。先识别后删除。"""
+    try:
+        _navigate("https://creator.xiaohongshu.com/new/note-manager?source=official")
+        time.sleep(3)
+
+        # 1. 识别仅自己可见帖子
+        identify_js = """(() => {
+          const text = document.body.innerText;
+          const re = /仅自己可见\\n(.+?)\\n发布于 \\d{4}年/g;
+          const posts = [];
+          let match;
+          while ((match = re.exec(text)) !== null) {
+            posts.push({ title: match[1] });
+          }
+          return JSON.stringify({ count: posts.length, posts });
+        })()"""
+        result = _eval(identify_js)
+        data = json.loads(result)
+
+        count = data.get("count", 0)
+        if count == 0:
+            return tool_result({"deleted": 0, "message": "没有仅自己可见的帖子"})
+
+        posts = data.get("posts", [])
+        deleted = []
+        failed = []
+
+        for i in range(count):
+            # 2. 点删除按钮
+            delete_js = f"""(() => {{
+              const all = Array.from(document.querySelectorAll('*'));
+              const btns = all.filter(el =>
+                (el.innerText || el.textContent || '').trim() === '删除' && el.offsetParent
+              );
+              if (!btns[{i}]) return JSON.stringify({{ ok: false, reason: 'no delete btn at ' + {i} }});
+              btns[{i}].click();
+              return JSON.stringify({{ ok: true }});
+            }})()"""
+            _eval(delete_js)
+            time.sleep(1.5)
+
+            # 3. 点确认弹窗
+            confirm_js = """(() => {
+              const all = document.querySelectorAll('button, span, div');
+              for (const el of all) {
+                if ((el.innerText || el.textContent || '').trim() === '确定' && el.offsetParent) {
+                  el.click();
+                  return JSON.stringify({ ok: true });
+                }
+              }
+              return JSON.stringify({ ok: false });
+            })()"""
+            confirm_raw = _eval(confirm_js)
+            confirm_data = json.loads(confirm_raw)
+
+            title = posts[i]["title"] if i < len(posts) else f"#{i}"
+            if confirm_data.get("ok"):
+                deleted.append(title)
+            else:
+                failed.append(title)
+            time.sleep(2)
+
+        return tool_result({
+            "deleted": len(deleted),
+            "failed": len(failed),
+            "total": count,
+            "posts": deleted,
+            "message": f"删除了 {len(deleted)} 篇测试帖"
+                       + (f"，{len(failed)} 篇失败" if failed else ""),
+        })
+    except Exception as e:
+        return tool_error(f"删除失败: {e}")
+
+
 # ── required exports ──────────────────────────────────────────────────────
 
 TOOLS = (
@@ -384,4 +506,5 @@ TOOLS = (
     ("xhs_reply_comment",  XHS_REPLY_COMMENT_SCHEMA,  _handle_xhs_reply_comment,  "💬"),
     ("xhs_publish_post",   XHS_PUBLISH_POST_SCHEMA,   _handle_xhs_publish_post,   "📝"),
     ("xhs_collect_info",   XHS_COLLECT_INFO_SCHEMA,   _handle_xhs_collect_info,   "📊"),
+    ("xhs_delete_post",    XHS_DELETE_POST_SCHEMA,    _handle_xhs_delete_post,    "🗑️"),
 )
