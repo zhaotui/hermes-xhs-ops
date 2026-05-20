@@ -1,26 +1,23 @@
 ---
 name: xhs-read-comments
-description: 读取小红书通知页评论，通过 Kimi WebBridge 浏览器自动化提取。
+description: 从笔记管理页点击封面打开详情页，提取评论。通过 xhs_read_comments plugin tool 自动化。
 ---
 
 # XHS Read Comments
 
-> 实际通过 **Kimi WebBridge** 浏览器自动化完成。
-> 提取评论用 `kimi-webbridge` skill 的 `snippet:parse-comments`。
+> 实际通过 **xhs plugin tool `xhs_read_comments`** 完成。
+> 路径：笔记管理页 → 点击封面 → `_find_tab` 切换 → 详情页 → 提取评论。
 
 ## 流程
 
-1. 加载 `kimi-webbridge` skill
-2. 导航到 `https://www.xiaohongshu.com/notification`
-3. 默认在"评论和@"tab；如不在用 `snippet:switch-comment-tab`
-4. 用 `snippet:parse-comments` evaluate 提取评论 JSON
-5. 输出评论列表给用户
-6. 如需看完整上下文：提取笔记链接 → navigate 到详情页
+1. 调用 `xhs_read_comments` tool（可选传 `note_index`，默认 0）
+2. Tool 自动：导航到笔记管理页 → 列封面 → 点击封面 → find_tab 切换到详情页
+3. 用 `PARSE_DETAIL_COMMENTS` JS 从详情页 bodyText 提取评论 JSON
+4. 返回 `{comments, count, message}`
 
 ## 陷阱
 
-- 通知页不显示你是否已回复 → 进详情页确认
-- "仅自己可见"笔记打不开前端详情页 → 跳过
-- 只关注"评论了你的笔记"，忽略"回复了你的评论"和"赞了你的评论"
-- 通知页用户名/封面是 `target="_blank"` 链接 → 用 evaluate 提取 href 后 navigate
-- **不要从创作者笔记管理页点帖子看评论** — SPA 路由拦截，WebBridge session 内不会导航。直接跳通知页。
+- 详情页评论包含**作者自己的回复**（带 `isAuthor: true`），AI 分析时注意区分
+- "仅自己可见"笔记打不开前端详情页 → tool 会报错
+- 审核中/未发布笔记也无法打开详情页
+- `_find_tab` 切换后需等待 3s 让页面完全加载再提取

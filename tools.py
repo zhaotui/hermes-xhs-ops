@@ -19,10 +19,16 @@ from plugins.xhs.client import (
 
 XHS_READ_COMMENTS_SCHEMA = {
     "name": "xhs_read_comments",
-    "description": "打开小红书通知页，切换到'评论和@'标签，提取所有'评论了你的笔记'的评论。返回评论列表 JSON。",
+    "description": "从笔记管理页点击封面打开详情页，提取所有评论。返回评论列表 JSON。",
     "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+            "note_index": {
+                "type": "integer",
+                "description": "笔记在列表中的索引（0-based），默认 0",
+                "default": 0,
+            },
+        },
         "required": [],
     },
 }
@@ -113,10 +119,17 @@ XHS_COLLECT_INFO_SCHEMA = {
 
 XHS_DELETE_POST_SCHEMA = {
     "name": "xhs_delete_post",
-    "description": "删除笔记管理页中所有'仅自己可见'的帖子（测试后清理）。先识别后删除，绝不误删公开帖。",
+    "description": "删除笔记管理页中指定可见范围的帖子（测试后清理）。先识别后删除，绝不误删非目标帖。",
     "parameters": {
         "type": "object",
-        "properties": {},
+        "properties": {
+            "visibility": {
+                "type": "string",
+                "enum": ["private", "public", "all"],
+                "description": "删除范围：private=仅自己可见，public=公开，all=全部",
+                "default": "private",
+            },
+        },
         "required": [],
     },
 }
@@ -226,24 +239,102 @@ CLICK_SEND = """(() => {
 })()"""
 
 
+PARSE_DETAIL_COMMENTS = r"""(() => {
+  const items = [];
+  const bodyText = document.body.innerText || '';
+
+  // Locate comment section
+  const m = bodyText.match(/共\s*(\d+)\s*条评论/);
+  if (!m) return JSON.stringify(items);
+  if (parseInt(m[1]) === 0) return JSON.stringify(items);
+
+  const idx = bodyText.indexOf(m[0]) + m[0].length;
+  const tail = bodyText.substring(idx);
+
+  // Find end of comment section
+  const endMarkers = ['- THE END -', '说点什么...'];
+  let endIdx = tail.length;
+  for (const marker of endMarkers) {
+    const pos = tail.indexOf(marker);
+    if (pos >= 0 && pos < endIdx) endIdx = pos;
+  }
+  const section = tail.substring(0, endIdx).trim();
+  if (!section) return JSON.stringify(items);
+
+  // Parse comments: each starts with authorName on its own line
+  // Pattern: authorName \n [作者\n] commentText \n meta \n 赞 \n 回复
+  const lines = section.split('\n').map(x => x.trim());
+  let i = 0;
+  while (i < lines.length) {
+    // Skip action buttons / empty
+    if (!lines[i] || lines[i] === '赞' || lines[i] === '回复') { i++; continue; }
+    const authorName = lines[i++];
+    if (i >= lines.length) break;
+    let isAuthor = false;
+    if (lines[i] === '作者') { isAuthor = true; i++; }
+    if (i >= lines.length) break;
+    const commentText = lines[i++];
+    if (!commentText || commentText === '赞' || commentText === '回复') continue;
+    // Meta line (time + location)
+    let meta = '';
+    if (i < lines.length && /\d+/.test(lines[i]) && !/\n/.test(lines[i])) {
+      meta = lines[i++];
+    }
+    // Skip 赞 / 回复
+    while (i < lines.length && (lines[i] === '赞' || lines[i] === '回复')) i++;
+    items.push({ authorName, text: commentText, isAuthor, meta });
+  }
+
+  return JSON.stringify(items);
+})()"""
+
 PAGE_TEXT = "(() => { const t = document.body.innerText || ''; return t.substring(0, 2000); })()"
 
 
 # ── handlers ──────────────────────────────────────────────────────────────
 
 def _handle_xhs_read_comments(args: dict, **kwargs) -> str:
-    """Read comments from 小红书 notification page."""
+    """从笔记管理页打开详情页，提取评论。"""
+    note_index = args.get("note_index", 0)
     try:
-        _navigate("https://www.xiaohongshu.com/notification")
-        time.sleep(3)
-        _eval(SWITCH_COMMENT_TAB)
+        # 1. 打开笔记管理页
+        _navigate("https://creator.xiaohongshu.com/new/note-manager?source=official")
+        time.sleep(4)
+
+        # 2. 列封面，确认索引有效
+        covers_raw = _eval(COVER_LIST)
+        covers = json.loads(covers_raw)
+        if note_index >= len(covers):
+            return tool_error(f"笔记索引 {note_index} 超出范围（共 {len(covers)} 篇）")
+
+        # 3. 点击封面打开详情页
+        _eval(_click_cover_js(note_index))
         time.sleep(2)
-        result = _eval(PARSE_COMMENTS)
+
+        # 4. 切换到新开的详情页 tab
+        _find_tab("www.xiaohongshu.com", active=False)
+        time.sleep(1)
+        _find_tab("www.xiaohongshu.com", active=True)
+        time.sleep(3)
+
+        # 5. 校验是否在详情页
+        page_check = """(() => {
+          return window.location.href.includes('xiaohongshu.com/explore/') ? 'ok' : 'not_detail';
+        })()"""
+        if _eval(page_check) != "ok":
+            # 可能还在笔记管理页——帖子审核中或未发布
+            text = _eval(PAGE_TEXT)
+            if "笔记管理" in text:
+                return tool_error("无法打开笔记详情，帖子可能处于审核中或未发布状态。")
+            return tool_error("未成功进入详情页")
+
+        # 6. 提取评论
+        result = _eval(PARSE_DETAIL_COMMENTS)
         comments = json.loads(result)
         if not comments:
-            return tool_result({"comments": [], "count": 0, "message": "本次没有读取到评论。"})
+            return tool_result({"comments": [], "count": 0, "message": "该笔记暂无评论。"})
         return tool_result({"comments": comments, "count": len(comments),
-                           "message": f"本次读取到 {len(comments)} 条评论。"})
+                           "message": f"读取到 {len(comments)} 条评论。"})
     except Exception as e:
         return tool_error(f"读取评论失败: {e}")
 
@@ -271,7 +362,7 @@ def _handle_xhs_view_note_detail(args: dict, **kwargs) -> str:
         _find_tab("www.xiaohongshu.com", active=True)
         time.sleep(2)
 
-        # Read page
+        # Read page text
         text = _eval(PAGE_TEXT)
 
         # 校验是否真正打开了详情页（审核中帖子无法打开）
@@ -281,7 +372,16 @@ def _handle_xhs_view_note_detail(args: dict, **kwargs) -> str:
                 "帖子可能处于审核中或未发布状态，请稍后再试。"
             )
 
-        return tool_result({"content": text, "note_index": note_index})
+        # 提取评论
+        comments_raw = _eval(PARSE_DETAIL_COMMENTS)
+        comments = json.loads(comments_raw)
+
+        return tool_result({
+            "content": text,
+            "note_index": note_index,
+            "comments": comments,
+            "comment_count": len(comments),
+        })
     except Exception as e:
         return tool_error(f"查看笔记详情失败: {e}")
 
@@ -294,12 +394,10 @@ def _handle_xhs_reply_comment(args: dict, **kwargs) -> str:
     try:
         # 校验是否在笔记详情页
         check_js = """(() => {
-          const text = document.body.innerText;
-          // 详情页标志：有"笔记详情"或发布时间+互动数据，且不在笔记管理页
-          const isManager = text.includes('笔记管理') && text.includes('全部笔记');
-          const isNotification = text.includes('通知') && text.includes('评论和@');
-          const hasDetail = text.includes('发布时间') || text.includes('发布于');
-          if (isManager || isNotification || !hasDetail) return 'not_detail';
+          const url = window.location.href;
+          const isCreator = url.includes('creator.xiaohongshu.com');
+          const isNotification = url.includes('notification');
+          if (isCreator || isNotification) return 'not_detail';
           return 'ok';
         })()"""
         page_check = _eval(check_js)
@@ -446,28 +544,60 @@ def _handle_xhs_collect_info(args: dict, **kwargs) -> str:
 
 
 def _handle_xhs_delete_post(args: dict, **kwargs) -> str:
-    """删除笔记管理页中所有仅自己可见的帖子。先识别后删除。"""
+    """删除笔记管理页中指定可见范围的帖子。先识别后删除。"""
+    visibility = args.get("visibility", "private")
     try:
         _navigate("https://creator.xiaohongshu.com/new/note-manager?source=official")
         time.sleep(3)
 
-        # 1. 识别仅自己可见帖子
-        identify_js = """(() => {
-          const text = document.body.innerText;
-          const re = /仅自己可见\\n(.+?)\\n发布于 \\d{4}年/g;
-          const posts = [];
-          let match;
-          while ((match = re.exec(text)) !== null) {
-            posts.push({ title: match[1] });
-          }
-          return JSON.stringify({ count: posts.length, posts });
-        })()"""
+        # 1. 识别目标帖子（按 visibility 不同策略）
+        if visibility == "private":
+            identify_js = """(() => {
+              const text = document.body.innerText;
+              const re = /仅自己可见\\n(.+?)\\n发布于 \\d{4}年/g;
+              const posts = [];
+              let match;
+              while ((match = re.exec(text)) !== null) {
+                posts.push({ title: match[1] });
+              }
+              return JSON.stringify({ count: posts.length, posts });
+            })()"""
+        elif visibility == "public":
+            identify_js = """(() => {
+              const text = document.body.innerText;
+              // 匹配所有 "title\\n发布于"，但排除前面是 "仅自己可见" 的
+              const allRe = /(.+?)\\n发布于 \\d{4}年/g;
+              const posts = [];
+              let match;
+              while ((match = allRe.exec(text)) !== null) {
+                const title = match[1];
+                // 检查前面一行是不是 "仅自己可见"
+                const before = text.substring(Math.max(0, match.index - 10), match.index);
+                if (!before.includes("仅自己可见")) {
+                  posts.push({ title });
+                }
+              }
+              return JSON.stringify({ count: posts.length, posts });
+            })()"""
+        else:  # all
+            identify_js = """(() => {
+              const text = document.body.innerText;
+              const re = /(.+?)\\n发布于 \\d{4}年/g;
+              const posts = [];
+              let match;
+              while ((match = re.exec(text)) !== null) {
+                posts.push({ title: match[1] });
+              }
+              return JSON.stringify({ count: posts.length, posts });
+            })()"""
+
         result = _eval(identify_js)
         data = json.loads(result)
 
         count = data.get("count", 0)
+        label = {"private": "仅自己可见", "public": "公开", "all": "全部"}[visibility]
         if count == 0:
-            return tool_result({"deleted": 0, "message": "没有仅自己可见的帖子"})
+            return tool_result({"deleted": 0, "message": f"没有{label}的帖子"})
 
         posts = data.get("posts", [])
         deleted = []
@@ -512,8 +642,9 @@ def _handle_xhs_delete_post(args: dict, **kwargs) -> str:
             "deleted": len(deleted),
             "failed": len(failed),
             "total": count,
+            "visibility": visibility,
             "posts": deleted,
-            "message": f"删除了 {len(deleted)} 篇测试帖"
+            "message": f"删除了 {len(deleted)} 篇{label}帖"
                        + (f"，{len(failed)} 篇失败" if failed else ""),
         })
     except Exception as e:
