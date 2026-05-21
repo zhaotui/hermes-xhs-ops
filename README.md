@@ -23,7 +23,10 @@ xhs/                       ← Plugin 根目录
 ├── scripts/
 │   ├── publish_auto.py     → 发布脚本（step-by-step 浏览器自动化）
 │   └── tab_manager.py      → tab 管理模块（list/ensure/close）
-├── install.sh              ← 一键安装
+├── deploy/                 ← 部署脚本
+│   ├── install.sh          → 一键安装
+│   ├── install-webbridge.ps1 → WebBridge 安装
+│   └── update.sh           → 更新代码
 └── README.md
 ```
 
@@ -124,15 +127,15 @@ curl -s "$WEBBRIDGE_BASE/status"
 **2. WSL2 端 — 装 xhs 插件**
 
 ```bash
-# 方式 A：直接跑 install.sh（内置 clone）
-bash install.sh
+# 方式 A：直接跑 deploy/install.sh（内置 clone）
+bash deploy/install.sh
 
 # 方式 B：手动 clone
-git clone http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops ~/.hermes/plugins/xhs && cd ~/.hermes/plugins/xhs && sed -i 's/\r$//' install.sh && bash install.sh
+git clone http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops ~/.hermes/plugins/xhs && cd ~/.hermes/plugins/xhs && sed -i 's/\r$//' deploy/install.sh && bash deploy/install.sh
 ```
 
 也可以手动指定 WebBridge IP：
 
 ```bash
-bash install.sh 172.26.240.1
+bash deploy/install.sh 172.26.240.1
 ```

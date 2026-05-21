@@ -19,9 +19,12 @@ if [ ! -f "plugin.yaml" ]; then
         git clone "$REPO_URL" ~/.hermes/plugins/xhs
         cd ~/.hermes/plugins/xhs
     fi
-    sed -i 's/\r$//' install.sh 2>/dev/null || true
-    exec bash install.sh "$@"
+    sed -i 's/\r$//' deploy/install.sh 2>/dev/null || true
+    exec bash deploy/install.sh "$@"
 fi
+
+# 确保在仓库根目录
+cd "$(dirname "$0")/.." 2>/dev/null || true
 
 echo "XHS Ops 安装中..."
 
