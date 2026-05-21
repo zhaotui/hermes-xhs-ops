@@ -51,10 +51,11 @@ xhs/                       ← Plugin 根目录
 ## 安装
 
 ```bash
-git clone <仓库地址> ~/xhs-ops && cd ~/xhs-ops
-echo 'export WEBBRIDGE_BASE="http://你的IP:10086"' >> ~/.bashrc && source ~/.bashrc
-sudo ln -sf ~/xhs-ops /usr/local/lib/hermes-agent/plugins/xhs
-mkdir -p ~/.hermes/skills/xhs && ln -sf ~/xhs-ops/skills/* ~/.hermes/skills/xhs/
+git clone <仓库地址> ~/xhs-ops && cd ~/xhs-ops && bash install.sh
 ```
 
-> WebBridge IP 用 `ip route | awk '/default/ {print $3}'` 查。装完告诉 Hermes 就行。
+脚本自动检测 WebBridge IP、注册插件和技能、部署定时任务。也可以手动指定 IP：
+
+```bash
+bash install.sh 172.26.240.1
+```
