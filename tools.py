@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import json
 import time
-from tools.registry import tool_error, tool_result
+
+# 不依赖 Hermes 内置 registry，内联定义
+def tool_result(data: dict) -> str:
+    return json.dumps({"ok": True, "data": data}, ensure_ascii=False)
+
+def tool_error(message: str) -> str:
+    return json.dumps({"ok": False, "error": message}, ensure_ascii=False)
 
 # 优先相对导入，失败则回退脚本目录
 try:
