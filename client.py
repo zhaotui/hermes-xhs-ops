@@ -75,3 +75,17 @@ def _navigate(url: str, session: str = "xhs") -> dict:
 
 def _find_tab(url_pattern: str, active: bool, session: str = "xhs") -> dict:
     return _cmd("find_tab", {"url": url_pattern, "active": active}, session=session)
+
+
+def close_all_tabs(session: str = "xhs") -> int:
+    """关闭指定 session 中的所有 tab，返回关闭数量。"""
+    result = _cmd("list_tabs", {}, session=session)
+    tabs = result.get("data", {}).get("tabs", [])
+    closed = 0
+    for t in tabs:
+        try:
+            _cmd("close_tab", {"tabId": t["tabId"]}, session=session)
+            closed += 1
+        except Exception:
+            pass
+    return closed

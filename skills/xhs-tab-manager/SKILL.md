@@ -34,10 +34,10 @@ for session in ["xhs"]:
 
 ## 操作规则
 
-1. **复用优先**：如果 session 中有 tab（任何页面），直接 navigate 到目标 URL，不关不新建
+1. **复用优先**：有 tab → navigate(url)；0 tab → navigate(url, newTab=True)
 2. **统一 session**：所有操作都用 `session="xhs"`
-3. **只有 0 tab 才 newTab**：`list_tabs` 为空时才 `newTab=True`
-4. **换个 URL 就行**：同一个 tab 可以 navigate 到不同页面，不需要为每个页面开新 tab
+3. **关闭 tab**：`from client import close_all_tabs; close_all_tabs()` 关闭当前 session 所有 tab
+4. **跨 session 关闭**：`close_all_tabs("xiaohongshu-auto")` 清理其他 session 残留
 
 ## 常见页面 URL
 
