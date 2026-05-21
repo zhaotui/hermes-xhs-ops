@@ -125,6 +125,15 @@ XHS_PUBLISH_POST_SCHEMA = {
                 "type": "boolean",
                 "description": "仅暂存不发布",
             },
+            "click_items": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "额外点击的按钮文本列表（如'添加话题'）",
+            },
+            "preview_tab": {
+                "type": "string",
+                "description": "预览 tab 名称（如'图片编辑'）",
+            },
         },
         "required": ["title", "body"],
     },

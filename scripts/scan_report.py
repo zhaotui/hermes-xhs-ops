@@ -18,6 +18,7 @@ sys.path.insert(0, PROJECT)
 sys.path.insert(0, os.path.join(PROJECT, "scripts"))
 
 from client import _navigate, _eval, _find_tab, _health_check
+from tab_manager import list_all as _list_tabs, close_one as _close_tab
 
 REPORT_DIR = os.path.expanduser("~/.hermes/data/xhs-ops/reports")
 COLLECT_FILE = os.path.expanduser("~/.hermes/data/xhs-ops/records.jsonl")
@@ -231,18 +232,16 @@ def _get_current_tab_ids() -> set:
     """获取当前 session 的 tab id 集合。"""
     from client import _cmd
     result = _cmd("list_tabs", {})
-    tabs = result.get("data", {}).get("tabs", [])
+    tabs = _list_tabs()
     return {t["tabId"] for t in tabs}
 
 
 def _close_extra_tabs(before_ids: set):
     """关闭新增的 tab。"""
-    from client import _cmd
-    after = _get_current_tab_ids()
-    new_ids = after - before_ids
-    for tid in new_ids:
+    after = {t["tabId"] for t in _list_tabs()}
+    for tid in (after - before_ids):
         try:
-            _cmd("close_tab", {"tabId": tid})
+            _close_tab(tid)
         except Exception:
             pass
 
