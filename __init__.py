@@ -13,7 +13,17 @@ Requires Kimi WebBridge running on Windows host.
 
 from __future__ import annotations
 
-from plugins.xhs.tools import TOOLS, _check_webbridge
+import os
+import sys
+
+# 优先用相对导入（兼容任意安装路径），失败则回退绝对导入
+try:
+    from .tools import TOOLS, _check_webbridge
+except ImportError:
+    _here = os.path.dirname(os.path.abspath(__file__))
+    if _here not in sys.path:
+        sys.path.insert(0, _here)
+    from tools import TOOLS, _check_webbridge
 
 
 def register(ctx) -> None:
