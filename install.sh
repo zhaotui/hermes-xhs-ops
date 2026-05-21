@@ -5,7 +5,7 @@ set -e
 # 用法: bash install.sh [WebBridge IP]
 # 可以直接运行（自动 clone 仓库），也可以在仓库内运行
 
-REPO_URL="http://192.168.8.251:8080/hr/xhs-ops"
+REPO_URL="http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops"
 
 # 0. 如果不在仓库内，先 clone，然后用仓库内的 install.sh 继续
 if [ ! -f "plugin.yaml" ]; then
