@@ -98,12 +98,17 @@ def main():
                 _close_extra_tabs(before_ids)
                 continue
 
-            # 提取评论
+            # 提取标题和评论
             PARSE = r"""(() => {
-              const items = [];
               const bodyText = document.body.innerText || '';
+              // 提取标题：从 document.title（格式："标题 - 小红书"）
+              let title = document.title.split(' - 小红书')[0].split(' | 小红书')[0].trim();
+              if (title.length > 40) title = title.substring(0, 40) + '...';
+
+              // 提取评论
+              const items = [];
               const m = bodyText.match(/共\s*(\d+)\s*条评论/);
-              if (!m || parseInt(m[1]) === 0) return JSON.stringify(items);
+              if (!m || parseInt(m[1]) === 0) return JSON.stringify({title, items});
               const idx = bodyText.indexOf(m[0]) + m[0].length;
               const tail = bodyText.substring(idx);
               const endMarkers = ['- THE END -', '说点什么...'];
@@ -113,7 +118,7 @@ def main():
                 if (pos >= 0 && pos < endIdx) endIdx = pos;
               }
               const section = tail.substring(0, endIdx).trim();
-              if (!section) return JSON.stringify(items);
+              if (!section) return JSON.stringify({title, items});
               const lines = section.split('\n').map(x => x.trim());
               let i = 0;
               while (i < lines.length) {
@@ -130,10 +135,12 @@ def main():
                 while (i < lines.length && (lines[i] === '赞' || lines[i] === '回复')) i++;
                 items.push({ authorName, text: commentText, isAuthor, meta });
               }
-              return JSON.stringify(items);
+              return JSON.stringify({title, items});
             })()"""
             raw = _eval(PARSE)
-            comments = json.loads(raw)
+            data = json.loads(raw)
+            note_title = data.get("title", f"笔记#{ci}")
+            comments = data.get("items", [])
 
             # 关详情 tab
             _close_extra_tabs(before_ids)
@@ -143,8 +150,9 @@ def main():
                     c["note_index"] = ci
                 all_comments.extend(comments)
                 report_lines.append(
-                    f"\n笔记 #{ci}: {len(comments)} 条评论"
+                    f"\n### {note_title}"
                 )
+                report_lines.append(f"共 {len(comments)} 条评论")
                 for c in comments:
                     tag = " [作者]" if c.get("isAuthor") else ""
                     report_lines.append(f"  - {c['authorName']}{tag}: {c['text']}")
