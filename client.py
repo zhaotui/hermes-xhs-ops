@@ -1,10 +1,13 @@
 """WebBridge HTTP client for the XHS plugin.
 
 Talks to the Kimi WebBridge daemon running on the Windows host.
+Set WEBBRIDGE_BASE env var (e.g. http://172.26.240.1:10086) to skip auto-detection.
 """
+
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import time
 import urllib.request
@@ -12,7 +15,11 @@ from typing import Any
 
 
 def _get_webbridge_base() -> str:
-    """Resolve Windows host gateway from WSL2."""
+    """Resolve WebBridge address. Priority: env var > ip route > error."""
+    env = os.environ.get("WEBBRIDGE_BASE", "").strip().rstrip("/")
+    if env:
+        return env
+
     try:
         result = subprocess.run(
             ["ip", "route"], capture_output=True, text=True, timeout=5
@@ -23,8 +30,12 @@ def _get_webbridge_base() -> str:
                 return f"http://{gateway}:10086"
     except Exception:
         pass
-    # Fallback
-    return "http://172.26.240.1:10086"
+
+    raise RuntimeError(
+        "无法自动检测 WebBridge 地址。\n"
+        "请设置环境变量 WEBBRIDGE_BASE，例如：\n"
+        '  export WEBBRIDGE_BASE="http://你的IP:10086"'
+    )
 
 
 def _health_check() -> bool:
