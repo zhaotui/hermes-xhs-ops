@@ -50,12 +50,9 @@ xhs/                       ← Plugin 根目录
 
 ## 前置
 
-1. 安装 **Kimi WebBridge**：访问 [kimi.com/webbridge](https://www.kimi.com/zh-cn/features/webbridge)，浏览器扩展从商店安装或手动加载；桥接服务安装：
-   ```bash
-   curl -fsSL https://cdn.kimi.com/webbridge/install.sh | bash
-   ```
+1. 装 **Kimi WebBridge**：[kimi.com/webbridge](https://www.kimi.com/zh-cn/features/webbridge) — 浏览器扩展 + `curl -fsSL https://cdn.kimi.com/webbridge/install.sh | bash`
 2. WSL2 + Hermes Agent 已安装
-3. 浏览器登录小红书创作者账号，保持一个小红书页面打开
+3. 浏览器登录小红书，保持一个页面打开
 
 ## 安装
 
