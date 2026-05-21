@@ -115,11 +115,19 @@ curl -s "$WEBBRIDGE_BASE/status"
 
 ## 安装
 
+**1. Windows 端 — 装 WebBridge**
+
+```powershell
+.\scripts\install-webbridge.ps1
+```
+
+**2. WSL2 端 — 装 xhs 插件**
+
 ```bash
 git clone http://192.168.8.251:8080/hr/xhs-ops ~/xhs-ops && cd ~/xhs-ops && sed -i 's/\r$//' install.sh && bash install.sh
 ```
 
-脚本自动检测 WebBridge IP、注册插件和技能。也可以手动指定 IP：
+也可以手动指定 WebBridge IP：
 
 ```bash
 bash install.sh 172.26.240.1
