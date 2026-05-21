@@ -58,6 +58,9 @@ fi
 ln -sf "$(pwd)" "$PLUGIN_DIR/xhs" 2>/dev/null || sudo ln -sf "$(pwd)" "$PLUGIN_DIR/xhs"
 echo "  插件已注册 → $PLUGIN_DIR/xhs"
 
+# 重启 gateway 让 Hermes 识别新插件
+hermes gateway restart 2>/dev/null && echo "  Gateway 已重载" || true
+
 # 4. 软链接 Skills
 mkdir -p ~/.hermes/skills/xhs
 for d in skills/*/; do
