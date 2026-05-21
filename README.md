@@ -57,6 +57,62 @@ xhs/                       ← Plugin 根目录
 2. Hermes Agent 已安装
 3. 浏览器登录小红书，保持一个页面打开
 
+## Kimi WebBridge 路径
+
+Windows 安装脚本会把 WebBridge 装到当前用户目录：
+
+```powershell
+$env:USERPROFILE\.kimi-webbridge
+```
+
+常见可执行文件路径：
+
+```powershell
+$env:USERPROFILE\.kimi-webbridge\bin\kimi-webbridge.exe
+```
+
+检查是否存在：
+
+```powershell
+$BinPath = "$env:USERPROFILE\.kimi-webbridge\bin\kimi-webbridge.exe"
+Test-Path $BinPath
+Get-Item $BinPath
+```
+
+查看状态：
+
+```powershell
+& "$env:USERPROFILE\.kimi-webbridge\bin\kimi-webbridge.exe" status
+```
+
+如果已加入 PATH：
+
+```powershell
+Get-Command kimi-webbridge -All
+where.exe kimi-webbridge
+kimi-webbridge status
+```
+
+从端口反查正在运行的进程路径：
+
+```powershell
+$pid = (Get-NetTCPConnection -LocalPort 10086 -State Listen).OwningProcess
+Get-Process -Id $pid | Select-Object Id, ProcessName, Path
+```
+
+查看日志：
+
+```powershell
+Get-Content "$env:USERPROFILE\.kimi-webbridge\logs\daemon.log" -Tail 100
+```
+
+Hermes 在 WSL 中访问 Windows WebBridge：
+
+```bash
+WEBBRIDGE_BASE="http://$(ip route | awk '/default/ {print $3; exit}'):10086"
+curl -s "$WEBBRIDGE_BASE/status"
+```
+
 ## 安装
 
 ```bash
