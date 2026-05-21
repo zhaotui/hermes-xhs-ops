@@ -60,6 +60,14 @@ echo "  插件已注册 → $PLUGIN_DIR/xhs"
 
 # 重启 gateway 让 Hermes 识别新插件
 hermes gateway restart 2>/dev/null && echo "  Gateway 已重载" || true
+sleep 2
+
+# 验证插件是否被识别
+if hermes tools list 2>/dev/null | grep -q xhs; then
+    echo "  ✅ xhs 工具集已识别"
+else
+    echo "  ⚠️ xhs 工具集未识别，请手动检查 hermes tools list"
+fi
 
 # 4. 软链接 Skills
 mkdir -p ~/.hermes/skills/xhs
