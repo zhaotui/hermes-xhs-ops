@@ -28,10 +28,15 @@ fi
 echo "  WebBridge IP: $IP"
 
 # 2. 设环境变量
+if ! grep -q "XHS_PROJECT" ~/.bashrc 2>/dev/null; then
+    echo "export XHS_PROJECT=\"$(pwd)\"" >> ~/.bashrc
+    echo "  已写入 ~/.bashrc"
+fi
 if ! grep -q "WEBBRIDGE_BASE" ~/.bashrc 2>/dev/null; then
     echo "export WEBBRIDGE_BASE=\"http://${IP}:10086\"" >> ~/.bashrc
     echo "  已写入 ~/.bashrc"
 fi
+export XHS_PROJECT="$(pwd)"
 export WEBBRIDGE_BASE="http://${IP}:10086"
 
 # 3. 软链接 Plugin

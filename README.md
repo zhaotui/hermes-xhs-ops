@@ -21,7 +21,7 @@ xhs/                       ← Plugin 根目录
 │   └── xhs-tab-manager/    → 浏览器 tab 感知与管理
 ├── scripts/
 │   ├── publish_auto.py     → 发布脚本（step-by-step 浏览器自动化）
-│   ├── scan_report.py      → 扫描报告脚本（cron --script 调用）
+│   ├── scan_report.py      → 报告调度（默认扫评论）
 │   └── tab_manager.py      → tab 管理模块（list/ensure/close）
 ├── install.sh              ← 一键安装
 └── README.md

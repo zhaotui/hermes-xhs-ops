@@ -19,7 +19,7 @@ description: 小红书自驱动运营——cron 链式调度，自动发帖/扫�
 
 | 组件 | 用途 |
 |------|------|
-| `scan_report.py` | 扫评论 → 分类 → 生成报告 |
+| `scan_report.py` | 报告调度（默认扫评论，支持扩展新任务） |
 | `publish_auto.py` | 浏览器自动化发帖 |
 | `xhs-read-comments` | 笔记管理页→详情页读评论 |
 | `xhs-collect-info` | 分类收集评论 → JSONL |
