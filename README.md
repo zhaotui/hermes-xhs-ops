@@ -1,6 +1,6 @@
 # XHS Ops — 小红书运营插件
 
-一个完整的 Hermes Plugin 项目，6 个工具 + 6 个技能 + 脚本（发帖、扫评论、回复、收集、删帖、自循环、tab 管理）。
+一个完整的 Hermes Plugin 项目，6 个工具 + 8 个技能 + 脚本（发帖、扫评论、回复、收集、删帖、自循环、tab 管理、WebBridge 指南）。
 
 ## 项目结构
 
@@ -11,6 +11,7 @@ xhs/                       ← Plugin 根目录
 ├── client.py               ← WebBridge HTTP 底层客户端
 ├── tools.py                ← 6 个工具实现（handler + schema）
 ├── skills/                 ← Skills（Hermes 自动加载）
+│   ├── kimi-webbridge/     → WebBridge 使用指南
 │   ├── xhs-publish-post/   → 发布笔记
 │   ├── xhs-read-comments/  → 读评论
 │   ├── xhs-reply-comment/  → 回复评论
@@ -22,6 +23,7 @@ xhs/                       ← Plugin 根目录
 │   ├── publish_auto.py     → 发布脚本（step-by-step 浏览器自动化）
 │   ├── scan_report.py      → 扫描报告脚本（cron --script 调用）
 │   └── tab_manager.py      → tab 管理模块（list/ensure/close）
+├── install.sh              ← 一键安装
 └── README.md
 ```
 

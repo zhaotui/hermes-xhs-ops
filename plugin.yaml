@@ -1,11 +1,12 @@
 name: xhs
 version: 1.0.0
-description: "Xiaohongshu (小红书) operations — read comments, view note details, reply, publish, collect info. Uses Kimi WebBridge HTTP API."
+description: "小红书运营插件 — 发帖、读评论、回评论、收集信息、删帖，通过 Kimi WebBridge 浏览器自动化。"
 author: hermes-zr
 kind: backend
 provides_tools:
+  - xhs_publish_post
   - xhs_read_comments
   - xhs_view_note_detail
   - xhs_reply_comment
-  - xhs_publish_post
   - xhs_collect_info
+  - xhs_delete_post
