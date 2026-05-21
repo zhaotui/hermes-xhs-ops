@@ -118,7 +118,7 @@ curl -s "$WEBBRIDGE_BASE/status"
 **1. Windows 端 — 装 WebBridge**
 
 ```powershell
-.\scripts\install-webbridge.ps1
+.\install-webbridge.ps1
 ```
 
 **2. WSL2 端 — 装 xhs 插件**
