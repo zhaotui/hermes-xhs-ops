@@ -5,7 +5,7 @@ description: 小红书浏览器 tab 感知与管理——开始任何 xhs 操作
 
 # XHS Tab Manager
 
-> **tab 管理模块：`tab_manager.py`**。所有 tab 操作统一入口，规则集中管理。
+> **tab 管理脚本：`scripts/tab_manager.py`**。所有 tab 操作统一入口，规则集中管理。
 
 ## 何时加载
 
@@ -16,6 +16,7 @@ description: 小红书浏览器 tab 感知与管理——开始任何 xhs 操作
 ## 核心 API
 
 ```python
+import sys; sys.path.insert(0, "/mnt/c/Users/yxkj/Desktop/work/xhs/scripts")
 from tab_manager import list_all, close_all, close_one, ensure
 
 # 查看当前 session 所有 tab
