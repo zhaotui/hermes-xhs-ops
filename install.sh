@@ -9,10 +9,16 @@ REPO_URL="http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-op
 
 # 0. 如果不在仓库内，先 clone 到 Hermes 插件目录
 if [ ! -f "plugin.yaml" ]; then
-    echo "未检测到项目文件，正在 clone 仓库..."
-    mkdir -p ~/.hermes/plugins
-    git clone "$REPO_URL" ~/.hermes/plugins/xhs
-    cd ~/.hermes/plugins/xhs
+    echo "未检测到项目文件..."
+    if [ -d ~/.hermes/plugins/xhs ]; then
+        echo "  已有安装，更新中..."
+        cd ~/.hermes/plugins/xhs && git pull
+    else
+        echo "  正在 clone 仓库..."
+        mkdir -p ~/.hermes/plugins
+        git clone "$REPO_URL" ~/.hermes/plugins/xhs
+        cd ~/.hermes/plugins/xhs
+    fi
     sed -i 's/\r$//' install.sh 2>/dev/null || true
     exec bash install.sh "$@"
 fi
