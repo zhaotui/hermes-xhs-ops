@@ -7,11 +7,12 @@ set -e
 
 REPO_URL="http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops"
 
-# 0. 如果不在仓库内，先 clone，然后用仓库内的 install.sh 继续
+# 0. 如果不在仓库内，先 clone 到 Hermes 插件目录
 if [ ! -f "plugin.yaml" ]; then
     echo "未检测到项目文件，正在 clone 仓库..."
-    git clone "$REPO_URL" ~/xhs-ops
-    cd ~/xhs-ops
+    mkdir -p ~/.hermes/plugins
+    git clone "$REPO_URL" ~/.hermes/plugins/xhs
+    cd ~/.hermes/plugins/xhs
     sed -i 's/\r$//' install.sh 2>/dev/null || true
     exec bash install.sh "$@"
 fi
@@ -46,35 +47,16 @@ fi
 export XHS_PROJECT="$(pwd)"
 export WEBBRIDGE_BASE="http://${IP}:10086"
 
-# 3. 软链接 Plugin — 自动检测 Hermes 插件目录
-PLUGIN_DIR=""
-for d in \
-    "$HOME/.hermes/plugins" \
-    "/usr/local/lib/hermes-agent/plugins" \
-    "$(python3 -c "import site; print(site.getsitepackages()[0])" 2>/dev/null)/hermes_agent/plugins" \
-    ; do
-    if [ -d "$d" ] || mkdir -p "$d" 2>/dev/null; then
-        PLUGIN_DIR="$d"
-        break
-    fi
-done
-if [ -z "$PLUGIN_DIR" ]; then
-    PLUGIN_DIR="$HOME/.hermes/plugins"
-    mkdir -p "$PLUGIN_DIR"
-fi
-ln -sf "$(pwd)" "$PLUGIN_DIR/xhs" 2>/dev/null || sudo ln -sf "$(pwd)" "$PLUGIN_DIR/xhs"
-echo "  插件已注册 → $PLUGIN_DIR/xhs"
-
-# 重启 gateway 让 Hermes 识别新插件
-hermes gateway restart 2>/dev/null && echo "  Gateway 已重载" || true
-sleep 2
-
-# 4. 软链接 Skills
+# 3. 软链接 Skills
 mkdir -p ~/.hermes/skills/xhs
 for d in skills/*/; do
     ln -sf "$(pwd)/${d}" ~/.hermes/skills/xhs/ 2>/dev/null
 done
 echo "  Skills 已注册"
+
+# 4. 重启 gateway 让 Hermes 识别新插件
+hermes gateway restart 2>/dev/null && echo "  Gateway 已重载" || true
+sleep 2
 
 # 5. 启用 xhs 插件 + 加入 CLI 平台
 hermes plugins enable xhs 2>/dev/null || true

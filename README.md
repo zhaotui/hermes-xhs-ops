@@ -124,7 +124,11 @@ curl -s "$WEBBRIDGE_BASE/status"
 **2. WSL2 端 — 装 xhs 插件**
 
 ```bash
-git clone http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops ~/xhs-ops && cd ~/xhs-ops && sed -i 's/\r$//' install.sh && bash install.sh
+# 方式 A：直接跑 install.sh（内置 clone）
+bash install.sh
+
+# 方式 B：手动 clone
+git clone http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops ~/.hermes/plugins/xhs && cd ~/.hermes/plugins/xhs && sed -i 's/\r$//' install.sh && bash install.sh
 ```
 
 也可以手动指定 WebBridge IP：
