@@ -62,13 +62,6 @@ echo "  插件已注册 → $PLUGIN_DIR/xhs"
 hermes gateway restart 2>/dev/null && echo "  Gateway 已重载" || true
 sleep 2
 
-# 验证插件是否被识别
-if hermes tools list 2>/dev/null | grep -q xhs; then
-    echo "  ✅ xhs 工具集已识别"
-else
-    echo "  ⚠️ xhs 工具集未识别，请手动检查 hermes tools list"
-fi
-
 # 4. 软链接 Skills
 mkdir -p ~/.hermes/skills/xhs
 for d in skills/*/; do
@@ -76,8 +69,8 @@ for d in skills/*/; do
 done
 echo "  Skills 已注册"
 
-# 5. 启用 xhs 工具集（加入 CLI 平台，否则 cron 不可用）
-hermes tools enable xhs 2>/dev/null || true
+# 5. 启用 xhs 插件 + 加入 CLI 平台
+hermes plugins enable xhs 2>/dev/null || true
 python3 -c "
 import yaml, os
 p = os.path.expanduser('~/.hermes/config.yaml')
@@ -88,6 +81,14 @@ if 'xhs' not in cli:
     with open(p, 'w') as f: yaml.dump(c, f, default_flow_style=False, allow_unicode=True)
     print('  xhs 已加入 CLI 平台')
 " 2>/dev/null || echo "  跳过工具集配置"
+
+# 验证
+sleep 1
+if hermes tools list 2>/dev/null | grep -q xhs; then
+    echo "  ✅ xhs 工具集已识别"
+else
+    echo "  ⚠️ xhs 工具集未识别，请手动检查 hermes tools list"
+fi
 
 echo ""
 echo -e "${GREEN}安装完成 ✅${NC}"
