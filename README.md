@@ -51,7 +51,7 @@ xhs/                       ← Plugin 根目录
 ## 安装
 
 ```bash
-git clone <仓库地址> ~/xhs-ops && cd ~/xhs-ops && bash install.sh
+git clone http://192.168.8.251:8080/hr/xhs-ops ~/xhs-ops && cd ~/xhs-ops && bash install.sh
 ```
 
 脚本自动检测 WebBridge IP、注册插件和技能、部署定时任务。也可以手动指定 IP：
