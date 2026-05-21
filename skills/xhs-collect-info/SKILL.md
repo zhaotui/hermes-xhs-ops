@@ -5,14 +5,14 @@ description: 根据规则分类评论，收集用户主动提供的信息，保�
 
 # XHS Collect Info
 
-> 实际通过 AI 分析评论 JSON + 本地文件写入完成（`xhs_collect_info` plugin tool 尚未实现）。
+> 通过 `xhs_collect_info` plugin tool 完成。分类规则：positive 命中 → useful，其余 → ignore（不保存）。
 
 ## 输入
 
 ```json
 {
   "goal": "任务目标",
-  "comments_json": "[{\"authorName\":\"...\",\"text\":\"...\",\"timeText\":\"...\"}]",
+  "comments_json": "[{\"authorName\":\"...\",\"text\":\"...\"}]",
   "positive_signals": "感兴趣,想了解,怎么报名",
   "negative_signals": "无关闲聊,表情,单纯问候"
 }
@@ -21,40 +21,36 @@ description: 根据规则分类评论，收集用户主动提供的信息，保�
 ## 流程
 
 1. 从 `xhs-read-comments` 拿到评论 JSON
-2. AI 根据 positive/negative signals 逐条分类评论
-3. 去重后保存到 `~/.hermes/data/xhs-ops/records.jsonl`（JSONL 格式）
+2. Tool 逐条分类：positive 关键词命中 → `useful`，其余 → `ignore`
+3. 去重后追加写入 `~/.hermes/data/xhs-ops/records.jsonl`
 
-## 分类逻辑（Python）
+## 分类逻辑
 
 ```python
-def classify(text, positive_signals="感兴趣,想了解,怎么报名,联系,微信,电话,咨询",
-                     negative_signals="你好,你好啊,哈喽,hi,在吗,表情,打卡"):
-    for kw in positive_signals.split(","):
-        if kw in text:
+def classify(text):
+    for s in positive_signals:
+        if s in text:
             return "useful"
-    for kw in negative_signals.split(","):
-        if kw in text:
-            return "useless"
-    return "maybe_useful"
+    return "ignore"  # 不保存
 ```
 
 ## 保存格式
 
-每行一条 JSONL 记录：
+每行一条 JSONL：
 ```json
-{"authorName": "...", "text": "...", "timeText": "...", "classification": "useful|maybe_useful|useless", "collected_at": "ISO8601"}
+{"type":"xhs_collected_info","goal":"...","platform":"xiaohongshu","sourceType":"comment","authorName":"...","sourceText":"...","classification":"useful","fields":{},"status":"new","capturedAt":"2026-05-21T..."}
 ```
 
 ## 输出
 
 ```
 本次收集到 X 条有效信息：
-1. 用户：【name】 评论：【text】 分类：【useful/maybe_useful/useless】
+1. 【authorName】: text [useful]
 本地文件：~/.hermes/data/xhs-ops/records.jsonl
 ```
 
 ## 陷阱
 
-- classification 三类：`useful`（命中 positive）、`useless`（命中 negative）、`maybe_useful`（均未命中）
-- 追加写入（`"a"` mode），不会覆盖历史记录
-- 需确保 `~/.hermes/data/xhs-ops/` 目录存在
+- 分类两类：`useful`（命中 positive）和 `ignore`（其余，不写入文件）
+- 追加写入，去重基于 (goal, authorName, sourceText) 三元组
+- 目录自动创建

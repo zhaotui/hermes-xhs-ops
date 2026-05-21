@@ -560,7 +560,7 @@ def _handle_xhs_publish_post(args: dict, **kwargs) -> str:
             return tool_result({
                 "success": True,
                 "title": title,
-                "visibility": visibility,
+                "visibility": args.get("visibility", "private"),
                 "stdout": result.stdout.strip().split("\n")[-3:],
             })
         return tool_error(f"发布失败 (exit={result.returncode}):\n{result.stderr or result.stdout}")

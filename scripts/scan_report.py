@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 # ── 路径设置 ──────────────────────────────────────────────────────────
 # 从 ~/.hermes/scripts/ 运行时需要找到 xhs 项目目录
-PROJECT = os.environ.get("XHS_PROJECT", "/mnt/c/Users/yxkj/Desktop/work/xhs")
+PROJECT = os.environ.get("XHS_PROJECT", os.path.expanduser("~/xhs-ops"))
 sys.path.insert(0, PROJECT)
 sys.path.insert(0, os.path.join(PROJECT, "scripts"))
 

@@ -16,7 +16,7 @@ description: 小红书浏览器 tab 感知与管理——开始任何 xhs 操作
 ## 核心 API
 
 ```python
-import sys; sys.path.insert(0, "/mnt/c/Users/yxkj/Desktop/work/xhs/scripts")
+import sys; sys.path.insert(0, os.path.expanduser("~/xhs-ops/scripts"))
 from tab_manager import list_all, close_all, close_one, ensure
 
 # 查看当前 session 所有 tab
