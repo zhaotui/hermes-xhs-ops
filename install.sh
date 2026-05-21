@@ -50,6 +50,19 @@ for d in skills/*/; do
 done
 echo "  Skills 已注册"
 
+# 5. 启用 xhs 工具集（加入 CLI 平台，否则 cron 不可用）
+hermes tools enable xhs 2>/dev/null || true
+python3 -c "
+import yaml, os
+p = os.path.expanduser('~/.hermes/config.yaml')
+with open(p) as f: c = yaml.safe_load(f)
+cli = c.setdefault('platform_toolsets', {}).setdefault('cli', [])
+if 'xhs' not in cli:
+    cli.append('xhs')
+    with open(p, 'w') as f: yaml.dump(c, f, default_flow_style=False, allow_unicode=True)
+    print('  xhs 已加入 CLI 平台')
+" 2>/dev/null || echo "  跳过工具集配置"
+
 echo ""
 echo -e "${GREEN}安装完成 ✅${NC}"
 echo "  后续操作（cron、自循环等）交给 Hermes 处理"
