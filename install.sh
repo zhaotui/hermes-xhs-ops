@@ -39,9 +39,24 @@ fi
 export XHS_PROJECT="$(pwd)"
 export WEBBRIDGE_BASE="http://${IP}:10086"
 
-# 3. 软链接 Plugin
-sudo ln -sf "$(pwd)" /usr/local/lib/hermes-agent/plugins/xhs
-echo "  插件已注册"
+# 3. 软链接 Plugin — 自动检测 Hermes 插件目录
+PLUGIN_DIR=""
+for d in \
+    "$HOME/.hermes/plugins" \
+    "/usr/local/lib/hermes-agent/plugins" \
+    "$(python3 -c "import site; print(site.getsitepackages()[0])" 2>/dev/null)/hermes_agent/plugins" \
+    ; do
+    if [ -d "$d" ] || mkdir -p "$d" 2>/dev/null; then
+        PLUGIN_DIR="$d"
+        break
+    fi
+done
+if [ -z "$PLUGIN_DIR" ]; then
+    PLUGIN_DIR="$HOME/.hermes/plugins"
+    mkdir -p "$PLUGIN_DIR"
+fi
+ln -sf "$(pwd)" "$PLUGIN_DIR/xhs" 2>/dev/null || sudo ln -sf "$(pwd)" "$PLUGIN_DIR/xhs"
+echo "  插件已注册 → $PLUGIN_DIR/xhs"
 
 # 4. 软链接 Skills
 mkdir -p ~/.hermes/skills/xhs
