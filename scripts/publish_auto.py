@@ -1060,22 +1060,6 @@ def is_publish_done():
     return is_published()
 
 
-def open_publish_page():
-    print("打开创作页...", flush=True)
-    result = wb(
-        "navigate",
-        {
-            "url": PUBLISH_URL,
-            "newTab": True,
-        },
-    )
-    if not result.get("ok", False):
-        print(f"打开创作页失败：{json.dumps(result, ensure_ascii=False)}", flush=True)
-        sys.exit(1)
-    wait_until("打开创作页", is_publish_home_loaded, timeout=45)
-    print("打开创作页完成", flush=True)
-
-
 def is_publish_home_loaded():
     r = ev(js("""
 const text = document.body.innerText;
@@ -1088,9 +1072,24 @@ return ok ? '1' : '0';
     return value(r) == "1"
 
 
+def ensure_session_tab(url: str):
+    """确保 session 中有可用 tab 并导航到目标 URL。
+    有 tab → 直接 navigate；没有 → newTab。绝不关闭已有 tab。"""
+    existing = wb("list_tabs", {})
+    tabs = existing.get("data", {}).get("tabs", [])
+    if tabs:
+        # 已有 tab，直接导航复用
+        return wb("navigate", {"url": url})
+    else:
+        # 没有 tab，开一个新的
+        return wb("navigate", {"url": url, "newTab": True})
+
+
 if __name__ == "__main__":
     apply_payload(load_payload())
-    open_publish_page()
+    ensure_session_tab(PUBLISH_URL)
+    wait_until("打开创作页", is_publish_home_loaded, timeout=45)
+    print("打开创作页完成", flush=True)
     if not is_editor():
         step("切换长文", switch_longform, is_longform_home)
         step("新建创作", click_new_creation, is_editor)
