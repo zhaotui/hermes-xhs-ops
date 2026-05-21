@@ -50,32 +50,151 @@ xhs/                       ← Plugin 根目录
 
 ## 安装
 
-### 前置条件
+### 1. 确认基础环境
 
-- **Hermes Agent** 已安装
-- **Kimi WebBridge** 运行在 Windows 端（`http://<IP>:10086`）
-- WSL2 环境，浏览器已登录小红书创作者
+你需要有一台 Windows 电脑，上面运行着 **Kimi WebBridge**（浏览器扩展）。这台电脑上还要安装 **WSL2**，Hermes Agent 跑在 WSL2 里面。
 
-### 步骤
+先确认 Hermes 装好了：
 
 ```bash
-# 1. 克隆
-git clone <repo-url> /opt/xhs-ops && cd /opt/xhs-ops
-
-# 2. WebBridge 地址
-export WEBBRIDGE_BASE="http://你的Windows IP:10086"
-
-# 3. 软链接 Plugin + Skills
-ln -sf /opt/xhs-ops /usr/local/lib/hermes-agent/plugins/xhs
-mkdir -p ~/.hermes/skills/xhs
-for d in skills/*/; do ln -sf /opt/xhs-ops/"$d" ~/.hermes/skills/xhs/; done
-
-# 4. 部署定时脚本
-cp scripts/scan_report.py ~/.hermes/scripts/
-
-# 5. 验证
-python3 -c "import sys; sys.path.insert(0,'/opt/xhs-ops'); from client import _health_check; print(_health_check())"
-
-# 6. 启动自循环
-hermes cron create --name "xhs-scan" --script "scan_report.py" --no-agent "*/15 * * * *"
+hermes --version   # 有版本号就行
 ```
+
+确认 WebBridge 能连通。在 WSL2 终端里执行：
+
+```bash
+# 找到 Windows 主机的 IP
+ip route | awk '/default/ {print $3}'
+
+# 测试连通（把 172.xx 换成上一步拿到的 IP）
+curl http://172.26.240.1:10086/status
+# 看到 {"running":true, "extension_connected":true} 就对了
+```
+
+如果 `curl` 不通，检查：
+- Windows 防火墙是否拦截了 10086 端口
+- Kimi WebBridge 扩展是否已安装并在浏览器里启用
+- 浏览器是否已打开一个小红书页面（WebBridge 需要至少一个 tab）
+
+### 2. 下载项目
+
+```bash
+cd ~
+git clone <你的仓库地址> xhs-ops
+cd xhs-ops
+```
+
+项目目录就是 `/root/xhs-ops`，后续所有路径都基于它。
+
+### 3. 配置 WebBridge 地址
+
+告诉 client.py 该往哪连。两种方式任选一种：
+
+**方式 A：环境变量（推荐，全局生效）**
+```bash
+echo 'export WEBBRIDGE_BASE="http://172.26.240.1:10086"' >> ~/.bashrc
+source ~/.bashrc
+# 把 IP 换成你第一步拿到的值
+```
+
+**方式 B：每次手动**（不推荐）
+```bash
+export WEBBRIDGE_BASE="http://172.26.240.1:10086"
+```
+
+### 4. 注册 Hermes Plugin
+
+让 Hermes 启动时自动加载项目里的 6 个工具（发帖、读评论、回复等）：
+
+```bash
+# 把项目目录软链接到 Hermes 插件目录
+sudo ln -sf /root/xhs-ops /usr/local/lib/hermes-agent/plugins/xhs
+```
+
+验证：
+```bash
+ls /usr/local/lib/hermes-agent/plugins/xhs/
+# 应该看到 client.py、tools.py、scripts/ 等文件
+```
+
+### 5. 注册 Skills
+
+Skills 是给 AI 看的操作手册，告诉它每个任务怎么执行：
+
+```bash
+# 创建 skills 目录
+mkdir -p ~/.hermes/skills/xhs
+
+# 软链接所有 skill
+ln -sf /root/xhs-ops/skills/xhs-publish-post   ~/.hermes/skills/xhs/
+ln -sf /root/xhs-ops/skills/xhs-read-comments  ~/.hermes/skills/xhs/
+ln -sf /root/xhs-ops/skills/xhs-reply-comment  ~/.hermes/skills/xhs/
+ln -sf /root/xhs-ops/skills/xhs-collect-info   ~/.hermes/skills/xhs/
+ln -sf /root/xhs-ops/skills/xhs-delete-post    ~/.hermes/skills/xhs/
+ln -sf /root/xhs-ops/skills/xhs-auto-pilot     ~/.hermes/skills/xhs/
+ln -sf /root/xhs-ops/skills/xhs-tab-manager    ~/.hermes/skills/xhs/
+```
+
+> 用软链接的好处：以后你在项目里改了 skill 文件，Hermes 读到的是最新的，不用再复制。
+
+### 6. 部署定时脚本
+
+`scan_report.py` 是自循环的核心——它每 15 分钟自动扫评论、分类、生成报告。Hermes cron 要求脚本放在 `~/.hermes/scripts/` 下：
+
+```bash
+cp /root/xhs-ops/scripts/scan_report.py ~/.hermes/scripts/scan_report.py
+```
+
+### 7. 验证安装
+
+跑一遍健康检查，确认整个链路通：
+
+```bash
+cd /root/xhs-ops
+python3 -c "
+import sys
+sys.path.insert(0, '.')
+from client import _health_check
+print('WebBridge:', '✅ 在线' if _health_check() else '❌ 连不上')
+"
+```
+
+如果输出 `✅ 在线`，安装成功。
+
+### 8. 启动自循环
+
+创建 cron 任务，每 15 分钟自动扫描一次：
+
+```bash
+hermes cron create \
+  --name "xhs-scan" \
+  --script "scan_report.py" \
+  --no-agent \
+  "*/15 * * * *"
+```
+
+- `--name "xhs-scan"`：任务名字，方便管理
+- `--script "scan_report.py"`：要执行的脚本
+- `--no-agent`：直接跑脚本输出结果，不经过 AI（干净快速）
+- `"*/15 * * * *"`：每 15 分钟跑一次
+
+查看任务状态：
+```bash
+hermes cron list          # 看所有定时任务
+hermes cron status        # 看调度器是否在运行
+```
+
+查看报告：
+```bash
+ls /root/.hermes/data/xhs-ops/reports/     # 报告文件列表
+cat /root/.hermes/data/xhs-ops/reports/scan_*.md | tail -20   # 看最新报告
+```
+
+### 常见问题
+
+| 问题 | 原因 | 解决 |
+|------|------|------|
+| `_health_check()` 返回 False | WebBridge 没连上 | 检查防火墙、扩展是否启用、浏览器有没有打开 |
+| cron 不执行 | gateway 没跑 | `hermes gateway status`，没有就 `hermes gateway start` |
+| 脚本报 import 错误 | 路径不对 | 确认第 4 步软链接正确，`python3` 在项目根目录执行 |
+| 报告里没数据 | 没有评论或笔记 | 去小红书发一篇公开笔记，等人评论后再看 |
