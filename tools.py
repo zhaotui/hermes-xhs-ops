@@ -204,33 +204,6 @@ def _close_new_tabs(before: set[int], session: str = "xhs") -> int:
     return closed
 
 
-SWITCH_COMMENT_TAB = """(() => {
-  const spans = document.querySelectorAll("span");
-  for (const s of spans) {
-    if (s.innerText === "评论和@" && s.offsetParent !== null) { s.click(); return "clicked"; }
-  }
-  return "not found";
-})()"""
-
-
-PARSE_COMMENTS = r"""(() => {
-  const items = [];
-  const allText = document.body.innerText;
-  const sections = allText.split(/\n(?=\S+\n评论了你的笔记)/);
-  for (const section of sections) {
-    if (!section.includes("评论了你的笔记")) continue;
-    const lines = section.split("\n").map(x => x.trim()).filter(Boolean);
-    const authorName = lines[0] || "";
-    const actionIdx = lines.findIndex(x => x.startsWith("评论了你的笔记"));
-    if (actionIdx < 0) continue;
-    const timeText = lines[actionIdx].replace("评论了你的笔记", "").trim();
-    const commentText = lines[actionIdx + 1] || "";
-    if (!authorName || !commentText || commentText === "回复") continue;
-    items.push({ authorName, timeText, text: commentText });
-  }
-  return JSON.stringify(items);
-})()"""
-
 
 COVER_LIST = """(() => {
   const imgs = document.querySelectorAll('img.content');
