@@ -45,19 +45,6 @@ for d in skills/*/; do
 done
 echo "  Skills 已注册"
 
-# 5. 部署 cron 脚本
-mkdir -p ~/.hermes/scripts
-cp -f scripts/scan_report.py ~/.hermes/scripts/scan_report.py
-echo "  定时脚本已部署"
-
-# 6. 创建 cron
-if hermes cron list 2>/dev/null | grep -q "xhs-scan"; then
-    echo "  cron 已存在，跳过"
-else
-    hermes cron create --name xhs-scan --script scan_report.py --no-agent "*/15 * * * *" 2>/dev/null || true
-    echo "  自循环已启动"
-fi
-
 echo ""
 echo -e "${GREEN}安装完成 ✅${NC}"
-echo "  报告目录: ~/.hermes/data/xhs-ops/reports/"
+echo "  后续操作（cron、自循环等）交给 Hermes 处理"
