@@ -51,25 +51,10 @@ xhs/                       ← Plugin 根目录
 ## 安装
 
 ```bash
-# 1. 下载
 git clone <仓库地址> ~/xhs-ops && cd ~/xhs-ops
-
-# 2. 设 WebBridge 地址（换成你的 IP）
-echo 'export WEBBRIDGE_BASE="http://172.26.240.1:10086"' >> ~/.bashrc && source ~/.bashrc
-
-# 3. 注册插件和技能
+echo 'export WEBBRIDGE_BASE="http://你的IP:10086"' >> ~/.bashrc && source ~/.bashrc
 sudo ln -sf ~/xhs-ops /usr/local/lib/hermes-agent/plugins/xhs
-mkdir -p ~/.hermes/skills/xhs
-ln -sf ~/xhs-ops/skills/* ~/.hermes/skills/xhs/
-
-# 4. 部署定时脚本
-cp ~/xhs-ops/scripts/scan_report.py ~/.hermes/scripts/
-
-# 5. 验证
-python3 -c "import sys; sys.path.insert(0,'$HOME/xhs-ops'); from client import _health_check; print('OK' if _health_check() else 'FAIL')"
-
-# 6. 启动自循环
-hermes cron create --name xhs-scan --script scan_report.py --no-agent "*/15 * * * *"
+mkdir -p ~/.hermes/skills/xhs && ln -sf ~/xhs-ops/skills/* ~/.hermes/skills/xhs/
 ```
 
-> WebBridge 地址用 `ip route | awk '/default/ {print $3}'` 查。看到 `OK` 就装好了。
+> WebBridge IP 用 `ip route | awk '/default/ {print $3}'` 查。装完告诉 Hermes 就行。
