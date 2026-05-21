@@ -3,11 +3,18 @@ set -e
 
 # ── XHS Ops 一键安装 ──
 # 用法: bash install.sh [WebBridge IP]
-# 示例: bash install.sh 172.26.240.1
+# 可以直接运行（自动 clone 仓库），也可以在仓库内运行
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+REPO_URL="http://192.168.8.251:8080/hr/xhs-ops"
+
+# 0. 如果不在仓库内，先 clone，然后用仓库内的 install.sh 继续
+if [ ! -f "plugin.yaml" ]; then
+    echo "未检测到项目文件，正在 clone 仓库..."
+    git clone "$REPO_URL" ~/xhs-ops
+    cd ~/xhs-ops
+    sed -i 's/\r$//' install.sh 2>/dev/null || true
+    exec bash install.sh "$@"
+fi
 
 echo "XHS Ops 安装中..."
 
