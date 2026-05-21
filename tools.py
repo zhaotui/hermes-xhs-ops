@@ -6,13 +6,15 @@ import json
 import time
 from tools.registry import tool_error, tool_result
 
-from plugins.xhs.client import (
-    _cmd,
-    _eval,
-    _find_tab,
-    _health_check,
-    _navigate,
-)
+# 优先相对导入，失败则回退脚本目录
+try:
+    from .client import _cmd, _eval, _find_tab, _health_check, _navigate
+except ImportError:
+    import os, sys
+    _here = os.path.dirname(os.path.abspath(__file__))
+    if _here not in sys.path:
+        sys.path.insert(0, _here)
+    from client import _cmd, _eval, _find_tab, _health_check, _navigate
 
 
 # ── tool schemas ──────────────────────────────────────────────────────────
