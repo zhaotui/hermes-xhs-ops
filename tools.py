@@ -183,6 +183,27 @@ def _check_webbridge() -> bool:
     return _health_check()
 
 
+def _get_tab_ids(session: str = "xhs") -> set[int]:
+    """返回当前 session 所有 tab 的 id 集合。"""
+    result = _cmd("list_tabs", {}, session=session)
+    tabs = result.get("data", {}).get("tabs", [])
+    return {t["tabId"] for t in tabs}
+
+
+def _close_new_tabs(before: set[int], session: str = "xhs") -> int:
+    """关闭 before 之后新出现的 tab，返回关闭数。"""
+    after = _get_tab_ids(session)
+    new_ids = after - before
+    closed = 0
+    for tid in new_ids:
+        try:
+            _cmd("close_tab", {"tabId": tid}, session=session)
+            closed += 1
+        except Exception:
+            pass
+    return closed
+
+
 SWITCH_COMMENT_TAB = """(() => {
   const spans = document.querySelectorAll("span");
   for (const s of spans) {
@@ -349,6 +370,9 @@ def _handle_xhs_read_comments(args: dict, **kwargs) -> str:
         if note_index >= len(covers):
             return tool_error(f"笔记索引 {note_index} 超出范围（共 {len(covers)} 篇）")
 
+        # 2.5. 记下当前 tab，点击封面后小会自动开新 tab
+        tab_ids_before = _get_tab_ids()
+
         # 3. 点击封面打开详情页
         _eval(_click_cover_js(note_index))
         time.sleep(2)
@@ -364,7 +388,7 @@ def _handle_xhs_read_comments(args: dict, **kwargs) -> str:
           return window.location.href.includes('xiaohongshu.com/explore/') ? 'ok' : 'not_detail';
         })()"""
         if _eval(page_check) != "ok":
-            # 可能还在笔记管理页——帖子审核中或未发布
+            _close_new_tabs(tab_ids_before)
             text = _eval(PAGE_TEXT)
             if "笔记管理" in text:
                 return tool_error("无法打开笔记详情，帖子可能处于审核中或未发布状态。")
@@ -373,6 +397,10 @@ def _handle_xhs_read_comments(args: dict, **kwargs) -> str:
         # 6. 提取评论
         result = _eval(PARSE_DETAIL_COMMENTS)
         comments = json.loads(result)
+
+        # 7. 关掉详情页 tab，回到笔记管理页
+        _close_new_tabs(tab_ids_before)
+
         if not comments:
             return tool_result({"comments": [], "count": 0, "message": "该笔记暂无评论。"})
         return tool_result({"comments": comments, "count": len(comments),
@@ -394,6 +422,9 @@ def _handle_xhs_view_note_detail(args: dict, **kwargs) -> str:
         if note_index >= len(covers):
             return tool_error(f"笔记索引 {note_index} 超出范围（共 {len(covers)} 篇）")
 
+        # 记下当前 tab，点击封面后小会自动开新 tab
+        tab_ids_before = _get_tab_ids()
+
         # Click cover
         _eval(_click_cover_js(note_index))
         time.sleep(2)
@@ -409,6 +440,7 @@ def _handle_xhs_view_note_detail(args: dict, **kwargs) -> str:
 
         # 校验是否真正打开了详情页（审核中帖子无法打开）
         if "笔记管理" in text and "全部笔记" in text:
+            _close_new_tabs(tab_ids_before)
             return tool_error(
                 f"无法打开笔记详情（索引 {note_index}）。"
                 "帖子可能处于审核中或未发布状态，请稍后再试。"
@@ -460,6 +492,16 @@ def _handle_xhs_reply_comment(args: dict, **kwargs) -> str:
 
         # Verify
         text = _eval(PAGE_TEXT)
+
+        # 回完关掉详情页 tab（除第一个外全关，留笔记管理页）
+        all_tabs = list(_get_tab_ids())
+        if len(all_tabs) > 1:
+            for tid in all_tabs[1:]:
+                try:
+                    _cmd("close_tab", {"tabId": tid})
+                except Exception:
+                    pass
+
         if reply_text in text:
             return tool_result({"success": True, "reply_text": reply_text})
         return tool_result({"success": True, "reply_text": reply_text, "warning": "回复可能未显示，请手动确认"})
