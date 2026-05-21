@@ -38,6 +38,7 @@ ORIGINAL = None
 CLICK_ITEMS = []
 LOCATION = ""
 VISIBILITY_USERS = []
+VISIBILITY_USERS_SELECTED = False
 CONTENT_TYPE = ""
 SOURCE_TYPE = ""
 IMAGES = []
@@ -525,11 +526,13 @@ return JSON.stringify({ ok: true, visibility: 'public' });
 
 
 def select_visibility_users():
+    global VISIBILITY_USERS_SELECTED
+    VISIBILITY_USERS_SELECTED = False
     if VISIBILITY not in ("include", "exclude") or not VISIBILITY_USERS:
         return ev(js("""
 return JSON.stringify({ ok: true, skipped: true });
 """))
-    return ev(f"""
+    r = ev(f"""
 (async () => {{
 {JS_HELPERS}
   const users = {json.dumps(VISIBILITY_USERS, ensure_ascii=False)};
@@ -570,14 +573,25 @@ return JSON.stringify({ ok: true, skipped: true });
   return JSON.stringify({{ ok: true, results }});
 }})()
 """)
+    try:
+        parsed = json.loads(value(r))
+    except Exception:
+        parsed = {}
+    if parsed.get("ok") is True and len(parsed.get("results", [])) == len(VISIBILITY_USERS):
+        VISIBILITY_USERS_SELECTED = True
+    return r
 
 
 def visibility_users_done():
     if VISIBILITY not in ("include", "exclude") or not VISIBILITY_USERS:
         return True
+    if VISIBILITY_USERS_SELECTED:
+        return True
     r = ev(js("""
 const text = document.body.innerText;
-return text.includes('已选择0人') || text.includes('已选择 0/') ? '0' : '1';
+const hasZero = text.includes('已选择0人') || text.includes('已选择 0/');
+const hasDialog = text.includes('点击左侧区域选择用户') || text.includes('确认');
+return hasDialog && hasZero ? '0' : '1';
 """))
     return value(r) == "1"
 
