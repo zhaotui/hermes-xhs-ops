@@ -2,7 +2,7 @@
 """小红书评论扫描报告脚本。
 
 独立运行，输出纯文本报告。供 cron --script --no-agent 调用。
-报告保存到 /root/.hermes/data/xhs-ops/reports/ 目录。
+报告保存到 ~/.hermes/data/xhs-ops/reports/ 目录。
 """
 
 import json
@@ -19,8 +19,8 @@ sys.path.insert(0, os.path.join(PROJECT, "scripts"))
 
 from client import _navigate, _eval, _find_tab, _health_check
 
-REPORT_DIR = "/root/.hermes/data/xhs-ops/reports"
-COLLECT_FILE = "/root/.hermes/data/xhs-ops/records.jsonl"
+REPORT_DIR = os.path.expanduser("~/.hermes/data/xhs-ops/reports")
+COLLECT_FILE = os.path.expanduser("~/.hermes/data/xhs-ops/records.jsonl")
 
 
 def ensure_dir(path: str):

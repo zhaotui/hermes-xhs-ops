@@ -46,7 +46,7 @@ xhs/                       ← Plugin 根目录
 
 ## 报告
 
-扫描报告保存在 `/root/.hermes/data/xhs-ops/reports/`，收集数据保存在 `/root/.hermes/data/xhs-ops/records.jsonl`。
+扫描报告保存在 `~/.hermes/data/xhs-ops/reports/`，收集数据保存在 `~/.hermes/data/xhs-ops/records.jsonl`。
 
 ## 安装
 

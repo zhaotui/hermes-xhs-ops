@@ -583,7 +583,7 @@ def _handle_xhs_collect_info(args: dict, **kwargs) -> str:
     goal = args.get("goal", "")
     positive = [s.strip() for s in args.get("positive_signals", "感兴趣,想了解,怎么报名").split(",") if s.strip()]
     negative = [s.strip() for s in args.get("negative_signals", "无关闲聊,表情,单纯问候").split(",") if s.strip()]
-    output_file = "/root/.hermes/data/xhs-ops/records.jsonl"
+    output_file = os.path.expanduser("~/.hermes/data/xhs-ops/records.jsonl")
 
     SIMPLE_GREETINGS = {"你好", "你好啊", "hi", "hello", "在吗", "哈喽"}
 
