@@ -47,3 +47,35 @@ xhs/                       ← Plugin 根目录
 ## 报告
 
 扫描报告保存在 `/root/.hermes/data/xhs-ops/reports/`，收集数据保存在 `/root/.hermes/data/xhs-ops/records.jsonl`。
+
+## 安装
+
+### 前置条件
+
+- **Hermes Agent** 已安装
+- **Kimi WebBridge** 运行在 Windows 端（`http://<IP>:10086`）
+- WSL2 环境，浏览器已登录小红书创作者
+
+### 步骤
+
+```bash
+# 1. 克隆
+git clone <repo-url> /opt/xhs-ops && cd /opt/xhs-ops
+
+# 2. WebBridge 地址
+export WEBBRIDGE_BASE="http://你的Windows IP:10086"
+
+# 3. 软链接 Plugin + Skills
+ln -sf /opt/xhs-ops /usr/local/lib/hermes-agent/plugins/xhs
+mkdir -p ~/.hermes/skills/xhs
+for d in skills/*/; do ln -sf /opt/xhs-ops/"$d" ~/.hermes/skills/xhs/; done
+
+# 4. 部署定时脚本
+cp scripts/scan_report.py ~/.hermes/scripts/
+
+# 5. 验证
+python3 -c "import sys; sys.path.insert(0,'/opt/xhs-ops'); from client import _health_check; print(_health_check())"
+
+# 6. 启动自循环
+hermes cron create --name "xhs-scan" --script "scan_report.py" --no-agent "*/15 * * * *"
+```
