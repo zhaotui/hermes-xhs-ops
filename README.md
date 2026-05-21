@@ -52,7 +52,7 @@ xhs/                       ← Plugin 根目录
 
 1. 装 **Kimi WebBridge**：[kimi.com/webbridge](https://www.kimi.com/zh-cn/features/webbridge)
    - 浏览器扩展：Chrome 商店安装或手动加载
-   - 桥接服务：Mac / WSL2 跑 `curl -fsSL https://cdn.kimi.com/webbridge/install.sh \| bash`，Windows 原生参考页面指引
+   - 桥接服务：`curl -fsSL https://cdn.kimi.com/webbridge/install.sh | bash`
 2. Hermes Agent 已安装
 3. 浏览器登录小红书，保持一个页面打开
 
