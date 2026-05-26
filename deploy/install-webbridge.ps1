@@ -1,12 +1,12 @@
 ﻿# Kimi WebBridge Windows 安装脚本
-# 用法：PowerShell 管理员运行 .\install-webbridge.ps1
+# 用法：powershell -ExecutionPolicy Bypass -File .\install-webbridge.ps1
 
 $ErrorActionPreference = "Stop"
 
 Write-Host "=== Kimi WebBridge 安装 ===" -ForegroundColor Cyan
 
 # 1. 安装
-Write-Host "1/5 下载安装..."
+Write-Host "1/4 下载安装..."
 irm https://cdn.kimi.com/webbridge/install.ps1 | iex
 
 # 2. 找到安装路径
@@ -18,43 +18,31 @@ if (-not (Test-Path $exe)) {
 }
 Write-Host "  安装位置: $exe"
 
-# 3. 加入 PATH（安装脚本默认不加）
+# 3. 加入 PATH
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($userPath -notlike "*$binDir*") {
     [Environment]::SetEnvironmentVariable("Path", "$userPath;$binDir", "User")
     $env:Path = "$env:Path;$binDir"
-    Write-Host "2/5 已加入 PATH: $binDir"
+    Write-Host "2/4 已加入 PATH: $binDir"
 } else {
-    Write-Host "2/5 PATH 已存在，跳过"
+    Write-Host "2/4 PATH 已存在，跳过"
 }
 
-# 4. 处理已有进程 + 清理残留 PID
-Write-Host "3/5 检查运行状态..."
-$existing = Get-Process -Name "kimi-webbridge" -ErrorAction SilentlyContinue
-if ($existing) {
-    Write-Host "  已有进程 (PID $($existing.Id))，先停止..."
-    Stop-Process -Name "kimi-webbridge" -Force
-    Start-Sleep -Seconds 2
-}
-$pidFile = "$env:USERPROFILE\.kimi-webbridge\kimi-webbridge.pid"
-if (Test-Path $pidFile) {
-    Write-Host "  清理残留 PID 文件..."
-    Remove-Item $pidFile -Force
-}
-
-# 5. 启动（监听所有网卡，WSL2 才能访问）
-Write-Host "4/5 启动服务..."
-Start-Process -FilePath $exe -ArgumentList "start", "--addr", "0.0.0.0" -WindowStyle Hidden
+# 4. 重启服务（监听所有网卡，WSL2 才能访问）
+Write-Host "3/4 重启服务（绑定 0.0.0.0:10086）..."
+& $exe restart --addr 0.0.0.0:10086 2>&1 | Out-Null
 Start-Sleep -Seconds 3
 
-# 6. 验证
-Write-Host "5/5 验证..."
+# 5. 验证
+Write-Host "4/4 验证..."
 $status = & $exe status 2>&1
 Write-Host "  $status"
 
-if ($status -match "running") {
+if ($LASTEXITCODE -eq 0 -and $status -match '"running":\s*true') {
     Write-Host "`n✅ 安装完成" -ForegroundColor Green
     Write-Host "  浏览器扩展请访问 https://www.kimi.com/zh-cn/features/webbridge 加载"
 } else {
-    Write-Host "`n⚠️ 服务可能未正常启动，请检查 $env:USERPROFILE\.kimi-webbridge\logs\daemon.log" -ForegroundColor Yellow
+    Write-Host "`n⚠️ 服务可能未正常启动" -ForegroundColor Yellow
+    Write-Host "  手动排查: kimi-webbridge status"
+    Write-Host "  查看日志: $env:USERPROFILE\.kimi-webbridge\logs\daemon.log"
 }
