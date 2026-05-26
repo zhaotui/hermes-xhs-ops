@@ -36,7 +36,7 @@ Get-Process -Name "kimi-webbridge" -ErrorAction SilentlyContinue | Stop-Process 
 Start-Sleep -Seconds 2
 
 # 清理残留 PID 文件
-$pidFile = "$env:USERPROFILE\.kimi-webbridge\kimi-webbridge.pid"
+$pidFile = "$env:USERPROFILE\.kimi-webbridge\daemon.pid"
 if (Test-Path $pidFile) {
     Remove-Item $pidFile -Force
 }
