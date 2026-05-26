@@ -1,4 +1,4 @@
-# Kimi WebBridge Windows 安装脚本
+﻿# Kimi WebBridge Windows 安装脚本
 # 用法：PowerShell 管理员运行 .\install-webbridge.ps1
 
 $ErrorActionPreference = "Stop"
