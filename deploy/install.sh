@@ -3,22 +3,39 @@ set -e
 
 # ── XHS Ops 一键安装 ──
 # 用法: bash install.sh [WebBridge IP]
-# 可以直接运行（自动 clone 仓库），也可以在仓库内运行
+# 用 git clone/pull + 账号密码拉取
 
-REPO_URL="http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops"
+GIT_URL="http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops.git"
+BRANCH="main"
+INSTALL_DIR="$HOME/.hermes/plugins/xhs"
 
-# 0. 如果不在仓库内，先 clone 到 Hermes 插件目录
+# 检查 git
+if ! command -v git &>/dev/null; then
+    echo "需要 git，请先安装 git"
+    exit 1
+fi
+
+# 0. 如果不在仓库内，git clone 到 Hermes 插件目录
 if [ ! -f "plugin.yaml" ]; then
-    echo "未检测到项目文件..."
-    if [ -d ~/.hermes/plugins/xhs ]; then
-        echo "  已有安装，更新中..."
-        cd ~/.hermes/plugins/xhs && git pull
+    echo "拉取 xhs-ops..."
+
+    if [ -d "$INSTALL_DIR/.git" ]; then
+        # 已有仓库，git pull 更新
+        echo "  已有安装，git pull 更新..."
+        cd "$INSTALL_DIR"
+        git pull "$GIT_URL" "$BRANCH"
     else
-        echo "  正在 clone 仓库..."
-        mkdir -p ~/.hermes/plugins
-        git clone "$REPO_URL" ~/.hermes/plugins/xhs
-        cd ~/.hermes/plugins/xhs
+        # 全新 clone
+        if [ -d "$INSTALL_DIR" ]; then
+            echo "  已有安装，覆盖更新..."
+            rm -rf "$INSTALL_DIR"
+        fi
+
+        mkdir -p "$(dirname "$INSTALL_DIR")"
+        git clone --depth 1 -b "$BRANCH" "$GIT_URL" "$INSTALL_DIR"
     fi
+
+    cd "$INSTALL_DIR"
     sed -i 's/\r$//' deploy/install.sh 2>/dev/null || true
     exec bash deploy/install.sh "$@"
 fi
