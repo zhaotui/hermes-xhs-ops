@@ -5,31 +5,34 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "=== Kimi WebBridge 安装 ===" -ForegroundColor Cyan
 
-# 1. 安装
-Write-Host "1/4 下载安装..."
-irm https://cdn.kimi.com/webbridge/install.ps1 | iex
-
-# 2. 找到安装路径
 $binDir = "$env:USERPROFILE\.kimi-webbridge\bin"
 $exe = "$binDir\kimi-webbridge.exe"
-if (-not (Test-Path $exe)) {
-    Write-Host "❌ 未找到 $exe" -ForegroundColor Red
-    exit 1
+
+# 1. 安装（已安装则跳过）
+if (Test-Path $exe) {
+    Write-Host "1/3 已安装，跳过下载"
+} else {
+    Write-Host "1/3 下载安装..."
+    irm https://cdn.kimi.com/webbridge/install.ps1 | iex
+    if (-not (Test-Path $exe)) {
+        Write-Host "❌ 安装失败，未找到 $exe" -ForegroundColor Red
+        exit 1
+    }
 }
 Write-Host "  安装位置: $exe"
 
-# 3. 加入 PATH
+# 2. 加入 PATH
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($userPath -notlike "*$binDir*") {
     [Environment]::SetEnvironmentVariable("Path", "$userPath;$binDir", "User")
     $env:Path = "$env:Path;$binDir"
-    Write-Host "2/4 已加入 PATH: $binDir"
+    Write-Host "2/3 已加入 PATH: $binDir"
 } else {
-    Write-Host "2/4 PATH 已存在，跳过"
+    Write-Host "2/3 PATH 已存在，跳过"
 }
 
-# 4. 重启服务（监听所有网卡，WSL2 才能访问）
-Write-Host "3/4 重启服务（绑定 0.0.0.0:10086）..."
+# 3. 重启服务（监听所有网卡，WSL2 才能访问）
+Write-Host "3/3 重启服务（绑定 0.0.0.0:10086）..."
 
 # 停止所有运行中的进程
 Get-Process -Name "kimi-webbridge" -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -45,8 +48,7 @@ if (Test-Path $pidFile) {
 & $exe start --addr 0.0.0.0:10086 2>&1 | Out-Null
 Start-Sleep -Seconds 3
 
-# 5. 验证
-Write-Host "4/4 验证..."
+# 验证
 $status = & $exe status 2>&1
 Write-Host "  $status"
 
