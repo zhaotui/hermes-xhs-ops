@@ -30,7 +30,19 @@ if ($userPath -notlike "*$binDir*") {
 
 # 4. 重启服务（监听所有网卡，WSL2 才能访问）
 Write-Host "3/4 重启服务（绑定 0.0.0.0:10086）..."
-& $exe restart --addr 0.0.0.0:10086 2>&1 | Out-Null
+
+# 停止所有运行中的进程
+Get-Process -Name "kimi-webbridge" -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Seconds 2
+
+# 清理残留 PID 文件
+$pidFile = "$env:USERPROFILE\.kimi-webbridge\kimi-webbridge.pid"
+if (Test-Path $pidFile) {
+    Remove-Item $pidFile -Force
+}
+
+# 启动
+& $exe start --addr 0.0.0.0:10086 2>&1 | Out-Null
 Start-Sleep -Seconds 3
 
 # 5. 验证
