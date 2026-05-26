@@ -28,13 +28,18 @@ if ($userPath -notlike "*$binDir*") {
     Write-Host "2/5 PATH 已存在，跳过"
 }
 
-# 4. 处理已有进程（PID 冲突）
+# 4. 处理已有进程 + 清理残留 PID
 Write-Host "3/5 检查运行状态..."
 $existing = Get-Process -Name "kimi-webbridge" -ErrorAction SilentlyContinue
 if ($existing) {
     Write-Host "  已有进程 (PID $($existing.Id))，先停止..."
     Stop-Process -Name "kimi-webbridge" -Force
     Start-Sleep -Seconds 2
+}
+$pidFile = "$env:USERPROFILE\.kimi-webbridge\kimi-webbridge.pid"
+if (Test-Path $pidFile) {
+    Write-Host "  清理残留 PID 文件..."
+    Remove-Item $pidFile -Force
 }
 
 # 5. 启动（监听所有网卡，WSL2 才能访问）
