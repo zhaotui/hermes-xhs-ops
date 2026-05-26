@@ -121,7 +121,7 @@ curl -s "$WEBBRIDGE_BASE/status"
 **1. Windows 端 — 装 WebBridge**
 
 ```powershell
-.\install-webbridge.ps1
+powershell -ExecutionPolicy Bypass -File .\install-webbridge.ps1
 ```
 
 **2. WSL2 端 — 装 xhs 插件**
