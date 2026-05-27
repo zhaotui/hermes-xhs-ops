@@ -49,6 +49,8 @@ xhs/                       ← Plugin 根目录
 
 未指定 `session` 时统一使用当前真实浏览器 session：`xhs`。只有明确需要多个 WebBridge session 时才传 `session`。
 
+新环境首次使用时，如果 `accounts.json` 不存在，工具会自动创建默认模板。
+
 常用操作：
 
 ```text

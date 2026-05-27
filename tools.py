@@ -41,13 +41,16 @@ DEFAULT_ACCOUNT = {
 
 
 def _read_accounts_state() -> dict:
+    default_state = {"current": DEFAULT_ACCOUNT["key"], "accounts": [DEFAULT_ACCOUNT.copy()]}
     if not os.path.exists(ACCOUNTS_FILE):
-        return {"current": DEFAULT_ACCOUNT["key"], "accounts": [DEFAULT_ACCOUNT.copy()]}
+        _write_accounts_state(default_state)
+        return default_state
     try:
         with open(ACCOUNTS_FILE, "r", encoding="utf-8") as f:
             state = json.load(f)
     except Exception:
-        return {"current": DEFAULT_ACCOUNT["key"], "accounts": [DEFAULT_ACCOUNT.copy()]}
+        _write_accounts_state(default_state)
+        return default_state
 
     accounts = state.get("accounts")
     if not isinstance(accounts, list) or not accounts:

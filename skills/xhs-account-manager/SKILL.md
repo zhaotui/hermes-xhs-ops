@@ -46,10 +46,11 @@ xhs_account_manager(action="list")
 2. 默认账号为 `default`，session 是 `xhs`。
 3. 未指定 session 时统一使用当前真实浏览器 session：`xhs`。
 4. 只有用户明确要求多个 WebBridge session 时，才传 `session` 参数。
-5. 后续 `xhs_publish_post`、`xhs_read_comments`、`xhs_view_note_detail`、`xhs_reply_comment`、`xhs_delete_post` 自动使用当前账号 session。
-6. `save_state` 保存小红书相关 cookies、localStorage、sessionStorage。
-7. `switch` 等价于恢复指定账号状态，并把当前账号指针切到该账号。
-8. 登录另一个账号前，优先用 `clear_local_state`，不要点网页“退出登录”。
-9. 状态保存、恢复、清理会复用同一个 tab，避免打开过多页面。
-10. 如果历史操作已经留下过多页面，用 `cleanup_tabs` 清理。
-11. 如果某账号状态过期，先 `open`，让用户登录，再重新 `save_state`。
+5. 新环境如果没有 `accounts.json`，工具会自动创建默认模板。
+6. 后续 `xhs_publish_post`、`xhs_read_comments`、`xhs_view_note_detail`、`xhs_reply_comment`、`xhs_delete_post` 自动使用当前账号 session。
+7. `save_state` 保存小红书相关 cookies、localStorage、sessionStorage。
+8. `switch` 等价于恢复指定账号状态，并把当前账号指针切到该账号。
+9. 登录另一个账号前，优先用 `clear_local_state`，不要点网页“退出登录”。
+10. 状态保存、恢复、清理会复用同一个 tab，避免打开过多页面。
+11. 如果历史操作已经留下过多页面，用 `cleanup_tabs` 清理。
+12. 如果某账号状态过期，先 `open`，让用户登录，再重新 `save_state`。
