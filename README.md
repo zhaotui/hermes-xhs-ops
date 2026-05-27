@@ -1,6 +1,6 @@
 # XHS Ops — 小红书运营插件
 
-一个完整的 Hermes Plugin 项目，6 个工具 + 9 个技能 + 脚本（发帖、扫评论、回复、收集、删帖、自循环、报告、tab 管理、WebBridge 指南）。
+一个完整的 Hermes Plugin 项目，7 个工具 + 10 个技能 + 脚本（账号管理、发帖、扫评论、回复、收集、删帖、自循环、报告、tab 管理、WebBridge 指南）。
 
 ## 项目结构
 
@@ -17,6 +17,7 @@ xhs/                       ← Plugin 根目录
 │   ├── xhs-reply-comment/  → 回复评论
 │   ├── xhs-collect-info/   → 分类收集信息
 │   ├── xhs-delete-post/    → 删帖清理
+│   ├── xhs-account-manager/ → 账号工作区管理
 │   ├── xhs-auto-pilot/     → 自循环运营（定时调度）
 │   ├── xhs-tab-manager/    → 浏览器 tab 感知与管理
 │   └── xhs-report/         → 报告规范与存储
@@ -34,12 +35,37 @@ xhs/                       ← Plugin 根目录
 
 | 工具 | 功能 | 参数 |
 |------|------|------|
+| `xhs_account_manager` | 账号工作区管理与切换 | action, key, name, session, home_url |
 | `xhs_publish_post` | 发布长文 | title, body, visibility, images, location, template, … |
 | `xhs_read_comments` | 笔记管理→详情页读评论 | note_index |
 | `xhs_view_note_detail` | 打开笔记详情页 | note_index |
 | `xhs_reply_comment` | 在详情页回复评论 | reply_text |
 | `xhs_collect_info` | 分类评论保存 JSONL | comments_json, goal |
 | `xhs_delete_post` | 删帖（按可见范围） | visibility=private/public/all |
+
+## 账号管理
+
+账号元数据保存在 `~/.hermes/data/xhs-ops/accounts.json`，真实登录状态快照保存在 `~/.hermes/data/xhs-ops/account-states/`。状态快照包含小红书相关 cookies、localStorage、sessionStorage。切换账号时会把对应状态恢复到浏览器，再打开目标页面。
+
+未指定 `session` 时统一使用当前真实浏览器 session：`xhs`。只有明确需要多个 WebBridge session 时才传 `session`。
+
+常用操作：
+
+```text
+xhs_account_manager(action="detect")
+xhs_account_manager(action="add", key="main", name="招聘号", nickname="小红书页面昵称")
+xhs_account_manager(action="save_state", key="main")
+xhs_account_manager(action="add", key="brand", name="品牌号", nickname="品牌号昵称")
+xhs_account_manager(action="save_state", key="brand")
+xhs_account_manager(action="switch", key="brand")
+xhs_account_manager(action="restore_state", key="main", target_url="https://creator.xiaohongshu.com/new/note-manager?source=official")
+xhs_account_manager(action="clear_local_state")
+xhs_account_manager(action="cleanup_tabs")
+xhs_account_manager(action="open")
+xhs_account_manager(action="list")
+```
+
+保存账号 A 后，如果要登录账号 B，不要点网页里的退出登录。先执行 `clear_local_state` 清掉本地小红书 cookies/storage，再手动登录 B，然后 `add` + `save_state` 保存 B。
 
 ## 脚本
 

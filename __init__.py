@@ -1,6 +1,7 @@
 """Xiaohongshu (小红书) operations plugin.
 
-Registers 6 tools into the ``xhs`` toolset:
+Registers 7 tools into the ``xhs`` toolset:
+- xhs_account_manager — 管理账号工作区并切换当前账号
 - xhs_read_comments   — 从笔记管理页打开详情页读取评论
 - xhs_view_note_detail — 打开笔记前端详情页
 - xhs_reply_comment    — 回复评论

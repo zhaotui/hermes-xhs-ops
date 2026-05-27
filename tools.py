@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 
 # 不依赖 Hermes 内置 registry，内联定义
@@ -14,13 +15,103 @@ def tool_error(message: str) -> str:
 
 # 优先相对导入，失败则回退脚本目录
 try:
-    from .client import _cmd, _eval, _find_tab, _health_check, _navigate
+    from .client import _cmd as _bridge_cmd, _eval as _bridge_eval, _find_tab as _bridge_find_tab, _health_check, _navigate as _bridge_navigate
 except ImportError:
-    import os, sys
+    import sys
     _here = os.path.dirname(os.path.abspath(__file__))
     if _here not in sys.path:
         sys.path.insert(0, _here)
-    from client import _cmd, _eval, _find_tab, _health_check, _navigate
+    from client import _cmd as _bridge_cmd, _eval as _bridge_eval, _find_tab as _bridge_find_tab, _health_check, _navigate as _bridge_navigate
+
+
+DATA_DIR = os.path.expanduser("~/.hermes/data/xhs-ops")
+ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts.json")
+ACCOUNT_STATES_DIR = os.path.join(DATA_DIR, "account-states")
+XHS_STATE_URLS = [
+    "https://creator.xiaohongshu.com/new/note-manager?source=official",
+    "https://www.xiaohongshu.com/",
+]
+DEFAULT_ACCOUNT = {
+    "key": "default",
+    "name": "默认账号",
+    "session": "xhs",
+    "home_url": "https://creator.xiaohongshu.com/new/note-manager?source=official",
+    "nickname": "",
+}
+
+
+def _read_accounts_state() -> dict:
+    if not os.path.exists(ACCOUNTS_FILE):
+        return {"current": DEFAULT_ACCOUNT["key"], "accounts": [DEFAULT_ACCOUNT.copy()]}
+    try:
+        with open(ACCOUNTS_FILE, "r", encoding="utf-8") as f:
+            state = json.load(f)
+    except Exception:
+        return {"current": DEFAULT_ACCOUNT["key"], "accounts": [DEFAULT_ACCOUNT.copy()]}
+
+    accounts = state.get("accounts")
+    if not isinstance(accounts, list) or not accounts:
+        accounts = [DEFAULT_ACCOUNT.copy()]
+    if not any(a.get("key") == DEFAULT_ACCOUNT["key"] for a in accounts):
+        accounts.insert(0, DEFAULT_ACCOUNT.copy())
+    current = state.get("current") or DEFAULT_ACCOUNT["key"]
+    if not any(a.get("key") == current for a in accounts):
+        current = DEFAULT_ACCOUNT["key"]
+    for account in accounts:
+        key = account.get("key")
+        legacy_auto_session = f"xhs-{key}"
+        if key and account.get("session") == legacy_auto_session:
+            account["session"] = DEFAULT_ACCOUNT["session"]
+    return {"current": current, "accounts": accounts}
+
+
+def _write_accounts_state(state: dict) -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(ACCOUNTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def _normalize_account_key(value: str) -> str:
+    key = "".join(ch for ch in value.strip().lower() if ch.isalnum() or ch in ("-", "_"))
+    if not key:
+        raise ValueError("账号 key 不能为空，只能包含字母、数字、-、_")
+    return key
+
+
+def _session_for_key(key: str) -> str:
+    return DEFAULT_ACCOUNT["session"]
+
+
+def _state_file_for_key(key: str) -> str:
+    return os.path.join(ACCOUNT_STATES_DIR, f"{key}.json")
+
+
+def _current_account() -> dict:
+    state = _read_accounts_state()
+    for account in state["accounts"]:
+        if account.get("key") == state["current"]:
+            return account
+    return DEFAULT_ACCOUNT.copy()
+
+
+def _current_session() -> str:
+    return _current_account().get("session") or DEFAULT_ACCOUNT["session"]
+
+
+def _cmd(action: str, args: dict | None = None, session: str | None = None, timeout: int = 15) -> dict:
+    return _bridge_cmd(action, args, session=session or _current_session(), timeout=timeout)
+
+
+def _eval(code: str, session: str | None = None) -> str:
+    return _bridge_eval(code, session=session or _current_session())
+
+
+def _navigate(url: str, session: str | None = None) -> dict:
+    return _bridge_navigate(url, session=session or _current_session())
+
+
+def _find_tab(url_pattern: str, active: bool, session: str | None = None) -> dict:
+    return _bridge_find_tab(url_pattern, active, session=session or _current_session())
 
 
 # ── tool schemas ──────────────────────────────────────────────────────────
@@ -193,6 +284,52 @@ XHS_DELETE_POST_SCHEMA = {
     },
 }
 
+XHS_ACCOUNT_MANAGER_SCHEMA = {
+    "name": "xhs_account_manager",
+    "description": "管理并切换小红书账号。配置只保存昵称/切换文本等非敏感信息，登录态由浏览器保存。",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["list", "current", "detect", "add", "save_state", "restore_state", "switch", "clear_local_state", "cleanup_tabs", "remove", "open"],
+                "description": "操作：list=列出账号，current=查看当前配置，detect=识别当前页面登录账号，add=新增/更新账号，save_state=保存真实登录状态，restore_state=恢复真实登录状态，switch=恢复指定账号状态，clear_local_state=只清本地小红书登录状态不点退出登录，cleanup_tabs=关闭当前账号 session 多余页面，remove=删除账号，open=打开账号主页",
+                "default": "list",
+            },
+            "key": {
+                "type": "string",
+                "description": "账号唯一标识，只能包含字母、数字、-、_，如 main、brand-a",
+            },
+            "name": {
+                "type": "string",
+                "description": "账号备注名，如 招聘号、品牌号",
+            },
+            "nickname": {
+                "type": "string",
+                "description": "小红书页面显示的昵称，用于识别当前登录账号",
+            },
+            "session": {
+                "type": "string",
+                "description": "WebBridge session 名称，仅用于浏览器标签分组，不代表登录态。未传时默认使用当前真实浏览器 session：xhs",
+            },
+            "home_url": {
+                "type": "string",
+                "description": "账号打开后的默认页面，默认小红书创作者中心笔记管理页",
+            },
+            "target_url": {
+                "type": "string",
+                "description": "恢复状态后打开的目标页面，默认账号 home_url",
+            },
+            "activate": {
+                "type": "boolean",
+                "description": "add 后是否立即设为当前账号",
+                "default": True,
+            },
+        },
+        "required": [],
+    },
+}
+
 
 # ── helpers ───────────────────────────────────────────────────────────────
 
@@ -200,14 +337,14 @@ def _check_webbridge() -> bool:
     return _health_check()
 
 
-def _get_tab_ids(session: str = "xhs") -> set[int]:
+def _get_tab_ids(session: str | None = None) -> set[int]:
     """返回当前 session 所有 tab 的 id 集合。"""
     result = _cmd("list_tabs", {}, session=session)
     tabs = result.get("data", {}).get("tabs", [])
     return {t["tabId"] for t in tabs}
 
 
-def _close_new_tabs(before: set[int], session: str = "xhs") -> int:
+def _close_new_tabs(before: set[int], session: str | None = None) -> int:
     """关闭 before 之后新出现的 tab，返回关闭数。"""
     after = _get_tab_ids(session)
     new_ids = after - before
@@ -514,7 +651,7 @@ def _handle_xhs_publish_post(args: dict, **kwargs) -> str:
         "visibility": args.get("visibility", "private"),
         "autoPublish": not args.get("save_draft", False),
         "saveDraft": args.get("save_draft", False),
-        "session": "xhs",
+        "session": _current_session(),
     }
 
     # 透传可选字段
@@ -744,9 +881,434 @@ def _handle_xhs_delete_post(args: dict, **kwargs) -> str:
         return tool_error(f"删除失败: {e}")
 
 
+DETECT_XHS_ACCOUNT_JS = """(() => {
+  const visible = el => {
+    const rect = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+  };
+  const textOf = el => (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
+  const candidates = [];
+  document.querySelectorAll('button,a,span,div,[role="button"],[class*="user"],[class*="account"],[class*="avatar"],[class*="name"]').forEach(el => {
+    if (!visible(el)) return;
+    const text = textOf(el);
+    const cls = String(el.className || '');
+    if (!text || text.length > 40) return;
+    if (/账号|切换|个人|主页|创作|昵称|user|account|avatar|name/i.test(text + ' ' + cls)) {
+      candidates.push({ text, tag: el.tagName, className: cls.slice(0, 120) });
+    }
+  });
+  return JSON.stringify({
+    url: location.href,
+    title: document.title,
+    candidates: candidates.slice(0, 30),
+    bodyHead: document.body.innerText.slice(0, 600),
+  });
+})()"""
+
+
+def _detect_xhs_account(session: str | None = None) -> dict:
+    raw = _eval(DETECT_XHS_ACCOUNT_JS, session=session)
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"raw": raw}
+
+
+def _storage_snapshot_js() -> str:
+    return """(() => {
+  const dump = storage => {
+    const data = {};
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      data[key] = storage.getItem(key);
+    }
+    return data;
+  };
+  return JSON.stringify({
+    origin: location.origin,
+    url: location.href,
+    localStorage: dump(localStorage),
+    sessionStorage: dump(sessionStorage),
+  });
+})()"""
+
+
+def _restore_storage_js(local_storage: dict, session_storage: dict) -> str:
+    return f"""(() => {{
+  const localData = {json.dumps(local_storage, ensure_ascii=False)};
+  const sessionData = {json.dumps(session_storage, ensure_ascii=False)};
+  localStorage.clear();
+  sessionStorage.clear();
+  for (const [key, value] of Object.entries(localData)) {{
+    localStorage.setItem(key, value);
+  }}
+  for (const [key, value] of Object.entries(sessionData)) {{
+    sessionStorage.setItem(key, value);
+  }}
+  return JSON.stringify({{
+    ok: true,
+    origin: location.origin,
+    localStorage: Object.keys(localData).length,
+    sessionStorage: Object.keys(sessionData).length,
+  }});
+}})()"""
+
+
+CLEAR_STORAGE_JS = """(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+  return JSON.stringify({ ok: true, origin: location.origin });
+})()"""
+
+
+def _is_xhs_cookie(cookie: dict) -> bool:
+    domain = cookie.get("domain", "").lstrip(".")
+    return domain == "xiaohongshu.com" or domain.endswith(".xiaohongshu.com")
+
+
+def _cookie_for_set(cookie: dict) -> dict:
+    allowed = {
+        "name", "value", "domain", "path", "secure", "httpOnly", "sameSite",
+        "expires", "priority", "sameParty", "sourceScheme", "sourcePort",
+        "partitionKey",
+    }
+    item = {k: v for k, v in cookie.items() if k in allowed and v is not None}
+    if item.get("expires", 0) <= 0:
+        item.pop("expires", None)
+    item.setdefault("path", "/")
+    return item
+
+
+def _delete_xhs_cookies(session: str) -> int:
+    data = _cmd("cdp", {"method": "Network.getAllCookies", "params": {}}, session=session)
+    cookies = data.get("data", {}).get("cookies", [])
+    deleted = 0
+    for cookie in cookies:
+        if not _is_xhs_cookie(cookie):
+            continue
+        params = {
+            "name": cookie.get("name"),
+            "domain": cookie.get("domain"),
+            "path": cookie.get("path") or "/",
+        }
+        try:
+            _cmd("cdp", {"method": "Network.deleteCookies", "params": params}, session=session)
+            deleted += 1
+        except Exception:
+            pass
+    return deleted
+
+
+def _ensure_xhs_tab(session: str, url: str | None = None, group_title: str | None = None) -> dict:
+    target = url or DEFAULT_ACCOUNT["home_url"]
+    tabs_result = _cmd("list_tabs", {}, session=session)
+    tabs = tabs_result.get("data", {}).get("tabs", [])
+    if tabs:
+        return _cmd("navigate", {"url": target}, session=session)
+    return _cmd("navigate", {"url": target, "newTab": True, "group_title": group_title or "小红书"}, session=session)
+
+
+def _save_xhs_state(account: dict) -> dict:
+    session = account.get("session") or _session_for_key(account.get("key", ""))
+    os.makedirs(ACCOUNT_STATES_DIR, exist_ok=True)
+    _ensure_xhs_tab(session, account.get("home_url") or DEFAULT_ACCOUNT["home_url"], account.get("name"))
+
+    cookie_result = _cmd("cdp", {"method": "Network.getAllCookies", "params": {}}, session=session)
+    cookies = [
+        _cookie_for_set(cookie)
+        for cookie in cookie_result.get("data", {}).get("cookies", [])
+        if _is_xhs_cookie(cookie)
+    ]
+
+    storages = {}
+    for url in XHS_STATE_URLS:
+        _cmd("navigate", {"url": url}, session=session)
+        time.sleep(2)
+        raw = _eval(_storage_snapshot_js(), session=session)
+        data = json.loads(raw)
+        storages[data["origin"]] = {
+            "url": data["url"],
+            "localStorage": data["localStorage"],
+            "sessionStorage": data["sessionStorage"],
+        }
+
+    _cmd("navigate", {"url": account.get("home_url") or DEFAULT_ACCOUNT["home_url"]}, session=session)
+    state = {
+        "key": account.get("key"),
+        "name": account.get("name"),
+        "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "cookies": cookies,
+        "storages": storages,
+    }
+    state_file = _state_file_for_key(account.get("key"))
+    with open(state_file, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+    return {
+        "state_file": state_file,
+        "cookies": len(cookies),
+        "origins": list(storages.keys()),
+    }
+
+
+def _restore_xhs_state(account: dict, target_url: str | None = None) -> dict:
+    session = account.get("session") or _session_for_key(account.get("key", ""))
+    state_file = _state_file_for_key(account.get("key"))
+    if not os.path.exists(state_file):
+        raise RuntimeError(f"账号状态不存在，请先 save_state: {state_file}")
+
+    with open(state_file, "r", encoding="utf-8") as f:
+        state = json.load(f)
+
+    _ensure_xhs_tab(session, target_url or account.get("home_url") or DEFAULT_ACCOUNT["home_url"], account.get("name"))
+    deleted = _delete_xhs_cookies(session)
+    cookies = [_cookie_for_set(cookie) for cookie in state.get("cookies", [])]
+    if cookies:
+        _cmd("cdp", {"method": "Network.setCookies", "params": {"cookies": cookies}}, session=session)
+
+    restored = []
+    for origin, storage in state.get("storages", {}).items():
+        url = storage.get("url") or origin
+        _cmd("navigate", {"url": url}, session=session)
+        time.sleep(1)
+        raw = _eval(
+            _restore_storage_js(storage.get("localStorage", {}), storage.get("sessionStorage", {})),
+            session=session,
+        )
+        try:
+            restored.append(json.loads(raw))
+        except Exception:
+            restored.append({"origin": origin, "raw": raw})
+
+    final_url = target_url or account.get("home_url") or DEFAULT_ACCOUNT["home_url"]
+    nav = _cmd("navigate", {"url": final_url}, session=session)
+    time.sleep(2)
+    return {
+        "state_file": state_file,
+        "deleted_cookies": deleted,
+        "restored_cookies": len(cookies),
+        "restored_storages": restored,
+        "navigate": nav,
+        "detected": _detect_xhs_account(session),
+    }
+
+
+def _clear_xhs_local_state(session: str, target_url: str | None = None) -> dict:
+    _ensure_xhs_tab(session, target_url or DEFAULT_ACCOUNT["home_url"], "清理小红书状态")
+    deleted = _delete_xhs_cookies(session)
+    cleared = []
+    for url in XHS_STATE_URLS:
+        _cmd("navigate", {"url": url}, session=session)
+        time.sleep(1)
+        raw = _eval(CLEAR_STORAGE_JS, session=session)
+        try:
+            cleared.append(json.loads(raw))
+        except Exception:
+            cleared.append({"url": url, "raw": raw})
+
+    final_url = target_url or DEFAULT_ACCOUNT["home_url"]
+    nav = _cmd("navigate", {"url": final_url}, session=session)
+    return {
+        "deleted_cookies": deleted,
+        "cleared_storages": cleared,
+        "navigate": nav,
+    }
+
+
+def _cleanup_extra_tabs(session: str, keep_url: str | None = None) -> dict:
+    tabs_result = _cmd("list_tabs", {}, session=session)
+    tabs = tabs_result.get("data", {}).get("tabs", [])
+    if not tabs:
+        nav = _cmd("navigate", {"url": keep_url or DEFAULT_ACCOUNT["home_url"], "newTab": True, "group_title": "小红书"}, session=session)
+        return {"closed": 0, "kept": None, "navigate": nav}
+
+    active = next((tab for tab in tabs if tab.get("active")), None)
+    kept = active or tabs[-1]
+    kept_id = kept.get("tabId")
+    closed = 0
+    for tab in tabs:
+        tab_id = tab.get("tabId")
+        if tab_id == kept_id:
+            continue
+        try:
+            result = _cmd("close_tab", {"tabId": tab_id}, session=session)
+            if result.get("ok"):
+                closed += 1
+        except Exception:
+            pass
+
+    nav = None
+    if keep_url:
+        nav = _cmd("navigate", {"url": keep_url}, session=session)
+    return {"closed": closed, "kept": kept_id, "navigate": nav}
+
+
+def _handle_xhs_account_manager(args: dict, **kwargs) -> str:
+    """管理小红书账号与当前 WebBridge session。"""
+    action = args.get("action", "list")
+    state = _read_accounts_state()
+    accounts = state["accounts"]
+
+    def public_account(account: dict) -> dict:
+        return {
+            "key": account.get("key"),
+            "name": account.get("name") or account.get("key"),
+            "nickname": account.get("nickname") or "",
+            "session": account.get("session") or _session_for_key(account.get("key", "")),
+            "home_url": account.get("home_url") or DEFAULT_ACCOUNT["home_url"],
+            "state_file": _state_file_for_key(account.get("key", "")),
+            "has_state": os.path.exists(_state_file_for_key(account.get("key", ""))),
+            "current": account.get("key") == state["current"],
+        }
+
+    try:
+        if action == "list":
+            return tool_result({
+                "current": state["current"],
+                "accounts": [public_account(a) for a in accounts],
+                "accounts_file": ACCOUNTS_FILE,
+            })
+
+        if action == "current":
+            account = _current_account()
+            detected = _detect_xhs_account(account.get("session") or _current_session())
+            return tool_result({"account": public_account(account), "detected": detected})
+
+        if action == "detect":
+            key = args.get("key")
+            session = None
+            if key:
+                normalized = _normalize_account_key(key)
+                account = next((a for a in accounts if a.get("key") == normalized), None)
+                if not account:
+                    return tool_error(f"账号不存在: {normalized}")
+                session = account.get("session")
+            return tool_result({"detected": _detect_xhs_account(session)})
+
+        if action == "add":
+            key = _normalize_account_key(args.get("key") or "")
+            name = (args.get("name") or key).strip()
+            nickname = (args.get("nickname") or "").strip()
+            session = (args.get("session") or _session_for_key(key)).strip()
+            home_url = (args.get("home_url") or DEFAULT_ACCOUNT["home_url"]).strip()
+            account = {
+                "key": key,
+                "name": name,
+                "nickname": nickname,
+                "session": session,
+                "home_url": home_url,
+            }
+
+            replaced = False
+            for index, item in enumerate(accounts):
+                if item.get("key") == key:
+                    accounts[index] = account
+                    replaced = True
+                    break
+            if not replaced:
+                accounts.append(account)
+            if args.get("activate", True):
+                state["current"] = key
+            state["accounts"] = accounts
+            _write_accounts_state(state)
+            return tool_result({
+                "success": True,
+                "action": "updated" if replaced else "added",
+                "account": public_account(account),
+            })
+
+        if action == "switch":
+            key = _normalize_account_key(args.get("key") or "")
+            account = next((a for a in accounts if a.get("key") == key), None)
+            if not account:
+                return tool_error(f"账号不存在: {key}，请先用 action=add 新增")
+            switch_result = _restore_xhs_state(account, args.get("target_url"))
+            state["current"] = key
+            _write_accounts_state(state)
+            return tool_result({"success": True, "account": public_account(account), "switch": switch_result})
+
+        if action == "save_state":
+            key = _normalize_account_key(args.get("key") or state["current"])
+            account = next((a for a in accounts if a.get("key") == key), None)
+            if not account:
+                return tool_error(f"账号不存在: {key}，请先用 action=add 新增")
+            saved = _save_xhs_state(account)
+            return tool_result({"success": True, "account": public_account(account), "saved": saved})
+
+        if action == "restore_state":
+            key = _normalize_account_key(args.get("key") or state["current"])
+            account = next((a for a in accounts if a.get("key") == key), None)
+            if not account:
+                return tool_error(f"账号不存在: {key}，请先用 action=add 新增")
+            restored = _restore_xhs_state(account, args.get("target_url"))
+            state["current"] = key
+            _write_accounts_state(state)
+            return tool_result({"success": True, "account": public_account(account), "restored": restored})
+
+        if action == "clear_local_state":
+            key = args.get("key")
+            session = _current_session()
+            if key:
+                normalized = _normalize_account_key(key)
+                account = next((a for a in accounts if a.get("key") == normalized), None)
+                if not account:
+                    return tool_error(f"账号不存在: {normalized}")
+                session = account.get("session") or _session_for_key(normalized)
+            cleared = _clear_xhs_local_state(session, args.get("target_url"))
+            return tool_result({"success": True, "session": session, "cleared": cleared})
+
+        if action == "cleanup_tabs":
+            key = args.get("key")
+            session = _current_session()
+            home_url = args.get("target_url")
+            if key:
+                normalized = _normalize_account_key(key)
+                account = next((a for a in accounts if a.get("key") == normalized), None)
+                if not account:
+                    return tool_error(f"账号不存在: {normalized}")
+                session = account.get("session") or _session_for_key(normalized)
+                home_url = home_url or account.get("home_url")
+            cleaned = _cleanup_extra_tabs(session, home_url)
+            return tool_result({"success": True, "session": session, "cleanup": cleaned})
+
+        if action == "remove":
+            key = _normalize_account_key(args.get("key") or "")
+            if key == DEFAULT_ACCOUNT["key"]:
+                return tool_error("默认账号不能删除")
+            next_accounts = [a for a in accounts if a.get("key") != key]
+            if len(next_accounts) == len(accounts):
+                return tool_error(f"账号不存在: {key}")
+            state["accounts"] = next_accounts
+            if state["current"] == key:
+                state["current"] = DEFAULT_ACCOUNT["key"]
+            _write_accounts_state(state)
+            return tool_result({"success": True, "removed": key, "current": state["current"]})
+
+        if action == "open":
+            key = args.get("key")
+            account = _current_account()
+            if key:
+                normalized = _normalize_account_key(key)
+                account = next((a for a in accounts if a.get("key") == normalized), None)
+                if not account:
+                    return tool_error(f"账号不存在: {normalized}")
+                state["current"] = normalized
+                _write_accounts_state(state)
+            url = account.get("home_url") or DEFAULT_ACCOUNT["home_url"]
+            session = account.get("session") or _session_for_key(account.get("key", ""))
+            result = _cmd("navigate", {"url": url, "newTab": True, "group_title": account.get("name")}, session=session)
+            detected = _detect_xhs_account(session)
+            return tool_result({"success": True, "account": public_account(account), "navigate": result, "detected": detected})
+
+        return tool_error(f"未知 action: {action}")
+    except Exception as e:
+        return tool_error(f"账号管理失败: {e}")
+
+
 # ── required exports ──────────────────────────────────────────────────────
 
 TOOLS = (
+    ("xhs_account_manager", XHS_ACCOUNT_MANAGER_SCHEMA, _handle_xhs_account_manager, "👤"),
     ("xhs_read_comments",  XHS_READ_COMMENTS_SCHEMA,  _handle_xhs_read_comments,  "📖"),
     ("xhs_view_note_detail", XHS_VIEW_NOTE_DETAIL_SCHEMA, _handle_xhs_view_note_detail, "🔍"),
     ("xhs_reply_comment",  XHS_REPLY_COMMENT_SCHEMA,  _handle_xhs_reply_comment,  "💬"),

@@ -16,45 +16,72 @@ if _parent not in sys.path:
 
 from client import _cmd
 
+DATA_DIR = os.path.expanduser("~/.hermes/data/xhs-ops")
+ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts.json")
+DEFAULT_SESSION = "xhs"
 
-def _navigate(url: str, session: str = "xhs") -> dict:
-    return _cmd("navigate", {"url": url}, session=session)
+
+def current_session() -> str:
+    """返回当前小红书账号对应的 WebBridge session。"""
+    try:
+        with open(ACCOUNTS_FILE, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        current = state.get("current")
+        for account in state.get("accounts", []):
+            if account.get("key") == current:
+                session = account.get("session") or DEFAULT_SESSION
+                if account.get("key") and session == f"xhs-{account.get('key')}":
+                    return DEFAULT_SESSION
+                return session
+    except Exception:
+        pass
+    return DEFAULT_SESSION
 
 
-def list_all(session: str = "xhs") -> list[dict]:
+def _resolve_session(session: str | None = None) -> str:
+    return session or current_session()
+
+
+def _navigate(url: str, session: str | None = None) -> dict:
+    return _cmd("navigate", {"url": url}, session=_resolve_session(session))
+
+
+def list_all(session: str | None = None) -> list[dict]:
     """返回 session 中所有 tab 列表。"""
-    result = _cmd("list_tabs", {}, session=session)
+    result = _cmd("list_tabs", {}, session=_resolve_session(session))
     return result.get("data", {}).get("tabs", [])
 
 
-def close_all(session: str = "xhs") -> int:
+def close_all(session: str | None = None) -> int:
     """关闭 session 中所有 tab，返回关闭数。"""
-    tabs = list_all(session)
+    resolved = _resolve_session(session)
+    tabs = list_all(resolved)
     closed = 0
     for t in tabs:
         try:
-            _cmd("close_tab", {"tabId": t["tabId"]}, session=session)
+            _cmd("close_tab", {"tabId": t["tabId"]}, session=resolved)
             closed += 1
         except Exception:
             pass
     return closed
 
 
-def close_one(tab_id: int, session: str = "xhs") -> bool:
+def close_one(tab_id: int, session: str | None = None) -> bool:
     """关闭指定 tabId 的 tab。"""
     try:
-        result = _cmd("close_tab", {"tabId": tab_id}, session=session)
+        result = _cmd("close_tab", {"tabId": tab_id}, session=_resolve_session(session))
         return result.get("ok", False)
     except Exception:
         return False
 
 
-def ensure(url: str, session: str = "xhs") -> dict:
+def ensure(url: str, session: str | None = None) -> dict:
     """确保 session 中有可用 tab 并导航到目标 URL。
     规则：有 tab → navigate(url)；0 tab → navigate(url, newTab=True)。
     不关闭任何已有 tab。"""
-    tabs = list_all(session)
+    resolved = _resolve_session(session)
+    tabs = list_all(resolved)
     if tabs:
-        return _navigate(url, session=session)  # no newTab
+        return _navigate(url, session=resolved)  # no newTab
     else:
-        return _cmd("navigate", {"url": url, "newTab": True}, session=session)
+        return _cmd("navigate", {"url": url, "newTab": True}, session=resolved)

@@ -4,6 +4,7 @@ description: "小红书运营插件 — 发帖、读评论、回评论、收集�
 author: hermes-zr
 kind: backend
 provides_tools:
+  - xhs_account_manager
   - xhs_publish_post
   - xhs_read_comments
   - xhs_view_note_detail
