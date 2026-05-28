@@ -77,22 +77,20 @@ curl -s -X POST "$WEBBRIDGE" \
 
 **单账号：** 直接使用该账号，跳过关联检查。
 
-**多账号：** 将 job 的 `creator` 与账号的 `linked_creator` 匹配：
+**多账号：** 将 job 的 `creator` 与账号的 `linked_creator` 比对：
 
 ```python
 xhs_account_manager(action="list")
-# 返回 accounts 列表，每个 account 有 linked_creator 字段
-# job.creator == account.linked_creator → 用这个账号发布
+# job.creator 与每个 account.linked_creator 逐一比对
 ```
 
-匹配规则：
-- `creator` 精准匹配 `linked_creator` → 直接用该账号
-- `linked_creator` 为空 → 该账号未关联，需要用户指定
+比对规则：
+- `creator` 精准匹配 `linked_creator` → 自动切换，继续发布
+- `linked_creator` 为空 → 该账号未关联
 - 多个账号匹配同一 creator → 优先用 `current`，其次第一个
-- 无匹配或关联缺失：
-  1. 暂停，告知用户"XX 没有关联账号，当前有 A 号、B 号，XX 关联哪个？"
-  2. 用户指定后，执行关联：`xhs_account_manager(action="add", key="指定key", linked_creator="XX")`
-  3. 关联完成后继续发布
+- 比对失败（无匹配或关联缺失）：
+  **必须暂停，禁止自行跳过**。告知用户"XX 没有关联账号，当前可用账号：A、B，XX 关联哪个？"
+  等用户回复后执行关联 `xhs_account_manager(action="add", key="...", linked_creator="XX")`，再继续发布。
 
 匹配到账号后切换：
 ```python
