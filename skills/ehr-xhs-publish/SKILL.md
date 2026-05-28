@@ -73,7 +73,11 @@ curl -s -X POST "$WEBBRIDGE" \
 
 ### Step 3: 按创建人匹配发布账号
 
-读取 `accounts.json`，将 job 的 `creator` 与账号的 `linked_creator` 匹配，找到对应发布账号。
+先列出所有账号，根据账号数量决定策略。
+
+**单账号：** 直接使用该账号，跳过关联检查。
+
+**多账号：** 将 job 的 `creator` 与账号的 `linked_creator` 匹配：
 
 ```python
 xhs_account_manager(action="list")
@@ -83,8 +87,12 @@ xhs_account_manager(action="list")
 
 匹配规则：
 - `creator` 精准匹配 `linked_creator` → 直接用该账号
+- `linked_creator` 为空 → 该账号未关联，需要用户指定
 - 多个账号匹配同一 creator → 优先用 `current`，其次第一个
-- 无匹配 → 暂停，告知用户"XX 没有关联账号"，让用户指定或关联
+- 无匹配或关联缺失：
+  1. 暂停，告知用户"XX 没有关联账号，当前有 A 号、B 号，XX 关联哪个？"
+  2. 用户指定后，执行关联：`xhs_account_manager(action="add", key="指定key", linked_creator="XX")`
+  3. 关联完成后继续发布
 
 匹配到账号后切换：
 ```python
