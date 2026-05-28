@@ -77,7 +77,7 @@ def _write_accounts_state(state: dict) -> None:
 def _normalize_account_key(value: str) -> str:
     key = "".join(ch for ch in value.strip().lower() if ch.isalnum() or ch in ("-", "_"))
     if not key:
-        raise ValueError("账号 key 不能为空，只能包含字母、数字、-、_")
+        raise ValueError("账号 key 不能为空")
     return key
 
 
@@ -301,7 +301,7 @@ XHS_ACCOUNT_MANAGER_SCHEMA = {
             },
             "key": {
                 "type": "string",
-                "description": "账号唯一标识，只能包含字母、数字、-、_，如 main、brand-a",
+                "description": "账号唯一标识。不传时默认取 nickname",
             },
             "name": {
                 "type": "string",
@@ -1194,9 +1194,11 @@ def _handle_xhs_account_manager(args: dict, **kwargs) -> str:
             return tool_result({"detected": _detect_xhs_account(session)})
 
         if action == "add":
-            key = _normalize_account_key(args.get("key") or "")
-            name = (args.get("name") or key).strip()
             nickname = (args.get("nickname") or "").strip()
+            key = _normalize_account_key(args.get("key") or nickname)
+            if not key:
+                return tool_error("key 和 nickname 至少提供一个")
+            name = (args.get("name") or key).strip()
             linked_creator = (args.get("linked_creator") or "").strip()
             session = (args.get("session") or _session_for_key(key)).strip()
             home_url = (args.get("home_url") or DEFAULT_ACCOUNT["home_url"]).strip()

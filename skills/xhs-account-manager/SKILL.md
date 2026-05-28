@@ -20,6 +20,10 @@ description: 小红书账号真实状态保存和切换。通过 xhs_account_man
 # 识别当前页面登录账号候选信息
 xhs_account_manager(action="detect")
 
+# 新增账号（key 不传，默认用昵称）
+xhs_account_manager(action="add", name="HR号", nickname="小红薯68761C00")
+xhs_account_manager(action="save_state")
+
 # 新增账号并保存当前浏览器里的真实登录状态
 xhs_account_manager(action="add", key="main", name="招聘号", nickname="小红书页面昵称")
 xhs_account_manager(action="save_state", key="main")
@@ -46,7 +50,7 @@ xhs_account_manager(action="list")
 
 ## 规则
 
-1. 账号 `key` 只用字母、数字、`-`、`_`。
+1. 账号 `key` 默认为昵称，不传 key 时自动取 `nickname`。也支持手动指定短 key（如 `main`）。
 2. 默认账号为 `default`，session 是 `xhs`。
 3. 未指定 session 时统一使用当前真实浏览器 session：`xhs`。
 4. 只有用户明确要求多个 WebBridge session 时，才传 `session` 参数。
