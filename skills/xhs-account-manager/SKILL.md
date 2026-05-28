@@ -11,6 +11,7 @@ description: 小红书账号真实状态保存和切换。通过 xhs_account_man
 
 - 用户要求切换小红书账号
 - 用户要新增、查看、删除账号工作区
+- 用户要关联账号到 EHR 职位创建人（如"main 关联赵锐"）
 - 发布、读评论、回复前需要确认当前操作账号
 
 ## 常用操作
@@ -35,6 +36,9 @@ xhs_account_manager(action="cleanup_tabs")
 
 # 打开当前账号的小红书创作者中心
 xhs_account_manager(action="open")
+
+# 关联账号到 EHR 职位创建人（用于发布时自动匹配）
+xhs_account_manager(action="add", key="main", linked_creator="赵锐")
 
 # 查看账号列表
 xhs_account_manager(action="list")

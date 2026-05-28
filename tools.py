@@ -319,6 +319,10 @@ XHS_ACCOUNT_MANAGER_SCHEMA = {
                 "type": "string",
                 "description": "账号打开后的默认页面，默认小红书创作者中心笔记管理页",
             },
+            "linked_creator": {
+                "type": "string",
+                "description": "关联的 EHR 职位创建人，用于发布时自动匹配账号。用户手动指定，如 '赵锐'",
+            },
             "target_url": {
                 "type": "string",
                 "description": "恢复状态后打开的目标页面，默认账号 home_url",
@@ -1157,6 +1161,7 @@ def _handle_xhs_account_manager(args: dict, **kwargs) -> str:
             "key": account.get("key"),
             "name": account.get("name") or account.get("key"),
             "nickname": account.get("nickname") or "",
+            "linked_creator": account.get("linked_creator") or "",
             "session": account.get("session") or _session_for_key(account.get("key", "")),
             "home_url": account.get("home_url") or DEFAULT_ACCOUNT["home_url"],
             "state_file": _state_file_for_key(account.get("key", "")),
@@ -1192,12 +1197,14 @@ def _handle_xhs_account_manager(args: dict, **kwargs) -> str:
             key = _normalize_account_key(args.get("key") or "")
             name = (args.get("name") or key).strip()
             nickname = (args.get("nickname") or "").strip()
+            linked_creator = (args.get("linked_creator") or "").strip()
             session = (args.get("session") or _session_for_key(key)).strip()
             home_url = (args.get("home_url") or DEFAULT_ACCOUNT["home_url"]).strip()
             account = {
                 "key": key,
                 "name": name,
                 "nickname": nickname,
+                "linked_creator": linked_creator,
                 "session": session,
                 "home_url": home_url,
             }

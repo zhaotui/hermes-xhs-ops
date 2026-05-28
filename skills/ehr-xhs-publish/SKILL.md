@@ -71,7 +71,27 @@ curl -s -X POST "$WEBBRIDGE" \
 
 返回 `XhsPublishJob[]`。
 
-### Step 3: 逐条发布
+### Step 3: 按创建人匹配发布账号
+
+读取 `accounts.json`，将 job 的 `creator` 与账号的 `linked_creator` 匹配，找到对应发布账号。
+
+```python
+xhs_account_manager(action="list")
+# 返回 accounts 列表，每个 account 有 linked_creator 字段
+# job.creator == account.linked_creator → 用这个账号发布
+```
+
+匹配规则：
+- `creator` 精准匹配 `linked_creator` → 直接用该账号
+- 多个账号匹配同一 creator → 优先用 `current`，其次第一个
+- 无匹配 → 暂停，告知用户"XX 没有关联账号"，让用户指定或关联
+
+匹配到账号后切换：
+```python
+xhs_account_manager(action="switch", key="matched_key")
+```
+
+### Step 4: 逐条发布
 
 对每条 job 调用 `xhs_publish_post`：
 
@@ -89,7 +109,7 @@ curl -s -X POST "$WEBBRIDGE" \
 #招聘 #求职 #{location_city} #{department}
 ```
 
-### Step 4: 删除已发布记录
+### Step 5: 删除已发布记录
 
 ```js
 (async () => {
@@ -102,7 +122,7 @@ curl -s -X POST "$WEBBRIDGE" \
 })()
 ```
 
-### Step 5: 失败处理
+### Step 6: 失败处理
 
 发布失败时保留记录，输出错误原因，继续处理下一条。
 
