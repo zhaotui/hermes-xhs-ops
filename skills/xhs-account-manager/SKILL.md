@@ -21,11 +21,11 @@ description: 小红书账号真实状态保存和切换。通过 xhs_account_man
 xhs_account_manager(action="detect")
 
 # 新增账号（key 不传，默认用昵称）
-xhs_account_manager(action="add", name="HR号", nickname="小红薯68761C00")
+xhs_account_manager(action="add", nickname="小红薯68761C00")
 xhs_account_manager(action="save_state")
 
 # 新增账号并保存当前浏览器里的真实登录状态
-xhs_account_manager(action="add", key="main", name="招聘号", nickname="小红书页面昵称")
+xhs_account_manager(action="add", key="main", nickname="小红书页面昵称")
 xhs_account_manager(action="save_state", key="main")
 
 # 切换当前账号：恢复保存过的 cookies/localStorage/sessionStorage

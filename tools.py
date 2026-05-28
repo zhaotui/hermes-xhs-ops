@@ -33,7 +33,6 @@ XHS_STATE_URLS = [
 ]
 DEFAULT_ACCOUNT = {
     "key": "default",
-    "name": "默认账号",
     "session": "xhs",
     "home_url": "https://creator.xiaohongshu.com/new/note-manager?source=official",
     "nickname": "",
@@ -302,10 +301,6 @@ XHS_ACCOUNT_MANAGER_SCHEMA = {
             "key": {
                 "type": "string",
                 "description": "账号唯一标识。不传时默认取 nickname",
-            },
-            "name": {
-                "type": "string",
-                "description": "账号备注名，如 招聘号、品牌号",
             },
             "nickname": {
                 "type": "string",
@@ -1019,7 +1014,7 @@ def _ensure_xhs_tab(session: str, url: str | None = None, group_title: str | Non
 def _save_xhs_state(account: dict) -> dict:
     session = account.get("session") or _session_for_key(account.get("key", ""))
     os.makedirs(ACCOUNT_STATES_DIR, exist_ok=True)
-    _ensure_xhs_tab(session, account.get("home_url") or DEFAULT_ACCOUNT["home_url"], account.get("name"))
+    _ensure_xhs_tab(session, account.get("home_url") or DEFAULT_ACCOUNT["home_url"], account.get("key"))
 
     cookie_result = _cmd("cdp", {"method": "Network.getAllCookies", "params": {}}, session=session)
     cookies = [
@@ -1043,7 +1038,6 @@ def _save_xhs_state(account: dict) -> dict:
     _cmd("navigate", {"url": account.get("home_url") or DEFAULT_ACCOUNT["home_url"]}, session=session)
     state = {
         "key": account.get("key"),
-        "name": account.get("name"),
         "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "cookies": cookies,
         "storages": storages,
@@ -1067,7 +1061,7 @@ def _restore_xhs_state(account: dict, target_url: str | None = None) -> dict:
     with open(state_file, "r", encoding="utf-8") as f:
         state = json.load(f)
 
-    _ensure_xhs_tab(session, target_url or account.get("home_url") or DEFAULT_ACCOUNT["home_url"], account.get("name"))
+    _ensure_xhs_tab(session, target_url or account.get("home_url") or DEFAULT_ACCOUNT["home_url"], account.get("key"))
     deleted = _delete_xhs_cookies(session)
     cookies = [_cookie_for_set(cookie) for cookie in state.get("cookies", [])]
     if cookies:
@@ -1159,7 +1153,6 @@ def _handle_xhs_account_manager(args: dict, **kwargs) -> str:
     def public_account(account: dict) -> dict:
         return {
             "key": account.get("key"),
-            "name": account.get("name") or account.get("key"),
             "nickname": account.get("nickname") or "",
             "linked_creator": account.get("linked_creator") or "",
             "session": account.get("session") or _session_for_key(account.get("key", "")),
@@ -1198,13 +1191,11 @@ def _handle_xhs_account_manager(args: dict, **kwargs) -> str:
             key = _normalize_account_key(args.get("key") or nickname)
             if not key:
                 return tool_error("key 和 nickname 至少提供一个")
-            name = (args.get("name") or key).strip()
             linked_creator = (args.get("linked_creator") or "").strip()
             session = (args.get("session") or _session_for_key(key)).strip()
             home_url = (args.get("home_url") or DEFAULT_ACCOUNT["home_url"]).strip()
             account = {
                 "key": key,
-                "name": name,
                 "nickname": nickname,
                 "linked_creator": linked_creator,
                 "session": session,
@@ -1308,7 +1299,7 @@ def _handle_xhs_account_manager(args: dict, **kwargs) -> str:
                 _write_accounts_state(state)
             url = account.get("home_url") or DEFAULT_ACCOUNT["home_url"]
             session = account.get("session") or _session_for_key(account.get("key", ""))
-            result = _cmd("navigate", {"url": url, "newTab": True, "group_title": account.get("name")}, session=session)
+            result = _cmd("navigate", {"url": url, "newTab": True, "group_title": account.get("key")}, session=session)
             detected = _detect_xhs_account(session)
             return tool_result({"success": True, "account": public_account(account), "navigate": result, "detected": detected})
 
