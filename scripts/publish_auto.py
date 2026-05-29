@@ -1087,6 +1087,11 @@ def ensure_session_tab(url: str):
 
 if __name__ == "__main__":
     apply_payload(load_payload())
+
+    # 记录脚本开始前的标签页，结束时不关用户手动打开的 tab
+    _initial = wb("list_tabs", {})
+    _initial_ids = {t["tabId"] for t in _initial.get("data", {}).get("tabs", [])}
+
     ensure_session_tab(PUBLISH_URL)
     wait_until("打开创作页", is_publish_home_loaded, timeout=45)
     print("打开创作页完成", flush=True)
@@ -1115,3 +1120,14 @@ if __name__ == "__main__":
         print("发布成功", flush=True)
     else:
         print("已停在发布前", flush=True)
+
+    # 关闭本次新增的标签页（不动用户手动打开的）
+    _final = wb("list_tabs", {})
+    _new_tabs = [t for t in _final.get("data", {}).get("tabs", []) if t["tabId"] not in _initial_ids]
+    for t in _new_tabs:
+        try:
+            wb("close_tab", {"tabId": t["tabId"]})
+        except Exception:
+            pass
+    if _new_tabs:
+        print(f"已关闭 {len(_new_tabs)} 个标签页", flush=True)
