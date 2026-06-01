@@ -172,6 +172,18 @@ xhs-ops/
 
 ---
 
+## 交流群
+
+**小红书 MCP 互助群**
+
+> ⚠️ 重要：在群里问问题之前，请一定要先仔细看完 README 文档以及查看 [Issues](https://github.com/zhaotui/hermes-xhs-ops/issues)。
+
+扫码加入微信群：
+
+<img src="./assets/wechat-group.jpg" alt="微信群" width="200" />
+
+---
+
 ## License
 
 MIT
