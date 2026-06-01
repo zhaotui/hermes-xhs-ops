@@ -1,6 +1,6 @@
 # XHS Ops — 小红书运营插件
 
-一个完整的 Hermes Plugin 项目，7 个工具 + 10 个技能 + 脚本（账号管理、发帖、扫评论、回复、收集、删帖、自循环、报告、tab 管理、WebBridge 指南）。
+一个完整的 Hermes Plugin 项目，7 个工具 + 9 个技能 + 脚本（账号管理、发帖、扫评论、回复、收集、删帖、自循环、报告、tab 管理、WebBridge 指南）。
 
 ## 项目结构
 
@@ -157,9 +157,6 @@ powershell -ExecutionPolicy Bypass -File .\install-webbridge.ps1
 ```bash
 # 方式 A：直接跑 deploy/install.sh（内置 clone）
 bash deploy/install.sh
-
-# 方式 B：手动 clone
-git clone http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops ~/.hermes/plugins/xhs && cd ~/.hermes/plugins/xhs && sed -i 's/\r$//' deploy/install.sh && bash deploy/install.sh
 ```
 
 也可以手动指定 WebBridge IP：

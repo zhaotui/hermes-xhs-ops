@@ -33,80 +33,22 @@
   @media (max-width: 640px) {
     .container { padding: 24px 20px; }
   }
-  h1 {
-    font-size: 2em;
-    font-weight: 800;
-    margin-bottom: 8px;
-    color: #111;
-    letter-spacing: -.02em;
-  }
-  h2 {
-    font-size: 1.35em;
-    font-weight: 700;
-    margin-top: 40px;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid var(--accent);
-  }
-  h3 {
-    font-size: 1.1em;
-    font-weight: 600;
-    margin-top: 28px;
-    margin-bottom: 10px;
-  }
+  h1 { font-size: 2em; font-weight: 800; margin-bottom: 8px; color: #111; letter-spacing: -.02em; }
+  h2 { font-size: 1.35em; font-weight: 700; margin-top: 40px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--accent); }
+  h3 { font-size: 1.1em; font-weight: 600; margin-top: 28px; margin-bottom: 10px; }
   p { margin-bottom: 12px; }
-  blockquote {
-    border-left: 3px solid var(--accent);
-    padding: 4px 16px;
-    margin: 16px 0;
-    color: var(--muted);
-    background: #fafafa;
-    border-radius: 0 6px 6px 0;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 16px 0;
-    font-size: .92em;
-  }
-  th, td {
-    padding: 10px 14px;
-    text-align: left;
-    border: 1px solid var(--border);
-  }
-  th {
-    background: #f8f9fa;
-    font-weight: 600;
-  }
+  blockquote { border-left: 3px solid var(--accent); padding: 4px 16px; margin: 16px 0; color: var(--muted); background: #fafafa; border-radius: 0 6px 6px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: .92em; }
+  th, td { padding: 10px 14px; text-align: left; border: 1px solid var(--border); }
+  th { background: #f8f9fa; font-weight: 600; }
   tr:hover { background: #fafbfc; }
-  pre {
-    background: #1e1e2e;
-    color: #cdd6f4;
-    border-radius: 8px;
-    padding: 16px 20px;
-    overflow-x: auto;
-    font-size: .85em;
-    line-height: 1.6;
-    margin: 16px 0;
-  }
-  code {
-    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
-    font-size: .88em;
-  }
-  :not(pre) > code {
-    background: var(--code-bg);
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
+  pre { background: #1e1e2e; color: #cdd6f4; border-radius: 8px; padding: 16px 20px; overflow-x: auto; font-size: .85em; line-height: 1.6; margin: 16px 0; }
+  code { font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace; font-size: .88em; }
+  :not(pre) > code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; }
   ul, ol { margin: 8px 0 16px 24px; }
   li { margin-bottom: 4px; }
-  hr {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 32px 0;
-  }
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
   strong { color: #111; }
-  a { color: var(--accent); text-decoration: none; }
 </style>
 </head>
 <body>
@@ -134,7 +76,7 @@
 </tr>
 <tr>
 <td>手动发帖效率低</td>
-<td>模板化发布，支持从 EHR 系统自动读取职位</td>
+<td>模板化发布，AI 辅助撰写内容</td>
 </tr>
 <tr>
 <td>评论信息流失</td>
@@ -148,15 +90,7 @@
 </table>
 <hr />
 <h2>二、系统架构</h2>
-<div class="codehilite"><pre><span></span><code>┌──────────────────────────────────────────────────────────┐
-│                    EHR 招聘系统                           │
-│  ehr.tenops.com                                          │
-│  IndexedDB: ehr_xhs_publish/jobs                        │
-│  写入待发布职位 → 由 Hermes 读取并发布                      │
-└──────────────────────┬───────────────────────────────────┘
-                       │ Kimi WebBridge (172.26.240.1:10086)
-                       ▼
-┌──────────────────────────────────────────────────────────┐
+<pre><code>┌──────────────────────────────────────────────────────────┐
 │                  Hermes Agent (WSL2)                      │
 │                                                          │
 │  ┌─────────────────────────────────────────────────┐    │
@@ -167,9 +101,9 @@
 │  │  reply_comment / collect_info / delete_post       │    │
 │  │  view_note_detail                                 │    │
 │  │                                                   │    │
-│  │  10 个技能:                                       │    │
+│  │  9 个技能:                                        │    │
 │  │  publish / comments / reply / collect / delete    │    │
-│  │  account / tab / report / auto-pilot / ehr        │    │
+│  │  account / tab / report / auto-pilot              │    │
 │  │                                                   │    │
 │  │  2 个脚本:                                        │    │
 │  │  publish_auto.py / tab_manager.py                 │    │
@@ -192,24 +126,21 @@
 │  └─────────────────────────────────────────────────┘    │
 │                                                          │
 │  操作目标:                                               │
-│  ├── creator.xiaohongshu.com (创作者中心)                 │
-│  └── ehr.tenops.com (EHR 系统)                           │
+│  └── creator.xiaohongshu.com (创作者中心)                 │
 └──────────────────────────────────────────────────────────┘
-</code></pre></div>
-
+</code></pre>
 <hr />
 <h2>三、功能模块</h2>
 <h3>3.1 多账号管理</h3>
 <p>支持多个小红书账号的登录态保存与快速切换。</p>
 <p><strong>账号配置</strong> (<code>accounts.json</code>):</p>
-<div class="codehilite"><pre><span></span><code>default    → (通用)
+<pre><code>default    → (通用)
 main       → 王童
 brand      → 李汶霖
 小红薯68761c00 → 马雨琦
-</code></pre></div>
-
+</code></pre>
 <p><strong>核心操作</strong>:
-- <code>add</code> — 新增账号（关联 EHR 创建人）
+- <code>add</code> — 新增账号
 - <code>save_state</code> — 保存当前登录态（cookie + localStorage）
 - <code>switch</code> — 恢复登录态 + 切换浏览器 session
 - <code>detect</code> — 检测当前浏览器登录的账号昵称</p>
@@ -217,14 +148,12 @@ brand      → 李汶霖
 <h3>3.2 自动发帖</h3>
 <p>支持长文笔记发布，完整覆盖小红书创作流程。</p>
 <p><strong>发布源</strong>:
-- 手动指定标题正文（AI 可帮忙写）
-- EHR 系统自动读取待发布职位</p>
+- 手动指定标题正文（AI 可帮忙写）</p>
 <p><strong>发布流程</strong>:</p>
-<div class="codehilite"><pre><span></span><code>打开发布页 → 切换长文 → 新建创作 → 填标题正文
+<pre><code>打开发布页 → 切换长文 → 新建创作 → 填标题正文
 → 一键排版 → 选择模板 → 下一步 → 填描述
 → 设置可见范围 → 发布
-</code></pre></div>
-
+</code></pre>
 <p><strong>关键参数</strong>:
 | 参数 | 说明 |
 |------|------|
@@ -234,45 +163,31 @@ brand      → 李汶霖
 | visibility | private/public/friends |
 | location | 发布地点 |
 | save_draft | 仅暂存不发布 |</p>
-<p><strong>EHR 职位发布模板</strong>:</p>
-<div class="codehilite"><pre><span></span><code>【招聘】{职位名}
-
-📍 {城市}  |  💰 {薪资}  |  🏢 {部门}
-
-📋 {职位描述}
-
----
-#招聘 #求职 #{城市}
-</code></pre></div>
-
 <h3>3.3 评论监控</h3>
 <p>从笔记管理页进入详情页，自动提取全部评论。</p>
 <p><strong>流程</strong>:</p>
-<div class="codehilite"><pre><span></span><code>笔记管理页 → 点击封面 → 切换到详情页 → 提取评论 JSON
-</code></pre></div>
-
+<pre><code>笔记管理页 → 点击封面 → 切换到详情页 → 提取评论 JSON
+</code></pre>
 <p><strong>输出</strong>: <code>{comments: [{authorName, text, timeText, isAuthor}], count, noteUrl}</code></p>
 <p><strong>注意</strong>: 自动过滤作者自己的回复（<code>isAuthor: true</code>），区分真实用户互动。</p>
 <h3>3.4 信息收集</h3>
 <p>对评论进行二分类，有价值的自动写入结构化数据。</p>
 <p><strong>分类规则</strong>:</p>
-<div class="codehilite"><pre><span></span><code>正向信号命中 → useful     → 写入 records.jsonl
+<pre><code>正向信号命中 → useful     → 写入 records.jsonl
 无命中       → ignore     → 丢弃
-</code></pre></div>
-
+</code></pre>
 <p><strong>正向信号示例</strong>: 感兴趣、想了解、怎么报名、求带、在哪里</p>
 <p><strong>存储格式</strong> (JSONL):</p>
-<div class="codehilite"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;xhs_collected_info&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;platform&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;xiaohongshu&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;sourceType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;comment&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;authorName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;用户昵称&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;sourceText&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;评论内容&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;classification&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;useful&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;capturedAt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01T10:00:00+08:00&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;xhs_collected_info&quot;,
+  &quot;platform&quot;: &quot;xiaohongshu&quot;,
+  &quot;sourceType&quot;: &quot;comment&quot;,
+  &quot;authorName&quot;: &quot;用户昵称&quot;,
+  &quot;sourceText&quot;: &quot;评论内容&quot;,
+  &quot;classification&quot;: &quot;useful&quot;,
+  &quot;capturedAt&quot;: &quot;2026-06-01T10:00:00+08:00&quot;
+}
+</code></pre>
 <p><strong>去重</strong>: 基于 (goal, authorName, sourceText) 三元组。</p>
 <h3>3.5 评论回复</h3>
 <p>在笔记详情页对指定评论进行回复。</p>
@@ -287,50 +202,30 @@ brand      → 李汶霖
 <h3>3.7 自动运营 (Auto Pilot)</h3>
 <p>通过 Hermes cron 实现定时自动化。</p>
 <p><strong>预设任务</strong>:</p>
-<div class="codehilite"><pre><span></span><code>每 N 分钟  → 扫描评论 + 分类 + 输出报告
-每天 10:00 → 发布 EHR 待发职位
+<pre><code>每 N 分钟  → 扫描评论 + 分类 + 输出报告
 每周日凌晨 → 清理测试帖
-</code></pre></div>
-
+</code></pre>
 <p><strong>每次执行自动</strong>:
 - 生成运营报告 → <code>~/.hermes/data/xhs-ops/reports/</code>
 - 报告格式规范: 标题 + 时间戳 + 分节数据</p>
 <hr />
 <h2>四、数据流</h2>
-<h3>4.1 EHR → 小红书</h3>
-<div class="codehilite"><pre><span></span><code>EHR 创建职位
-    │
-    ▼
-前端调 saveXhsPublishJob() → 写入 IndexedDB (ehr_xhs_publish/jobs)
-    │
-    ▼
-Hermes (cron/手动) 触发 ehr-xhs-publish
-    │
-    ├── webbridge evaluate → 读 IndexedDB getAll
-    ├── 按 creator 匹配 xhs 账号 (linked_creator)
-    ├── 格式化正文（模板渲染）
-    ├── xhs_publish_post → 浏览器发帖
-    └── 发布成功 → webbridge delete(id)
-</code></pre></div>
-
-<h3>4.2 评论数据流</h3>
-<div class="codehilite"><pre><span></span><code>xhs_read_comments
+<h3>4.1 评论数据流</h3>
+<pre><code>xhs_read_comments
     │
     ├── 提取评论 JSON
     ├── xhs_collect_info → 分类 (useful / ignore)
     ├── useful → 追加 records.jsonl
     └── xhs_reply_comment (可选)
-</code></pre></div>
-
-<h3>4.3 报告输出</h3>
-<div class="codehilite"><pre><span></span><code>每次操作结束
+</code></pre>
+<h3>4.2 报告输出</h3>
+<pre><code>每次操作结束
     │
     └── 生成报告 → reports/{标题}_{时间}.md
          ├── 概况（总数、有效数）
          ├── 明细（逐条列表）
          └── 分析（趋势、建议）
-</code></pre></div>
-
+</code></pre>
 <hr />
 <h2>五、部署方案</h2>
 <h3>5.1 环境要求</h3>
@@ -370,26 +265,24 @@ Hermes (cron/手动) 触发 ehr-xhs-publish
 </table>
 <h3>5.2 安装步骤</h3>
 <p><strong>Windows 端</strong>:</p>
-<div class="codehilite"><pre><span></span><code><span class="c"># 1. 安装 Kimi WebBridge 扩展 + 桥接服务</span>
-<span class="n">powershell</span> <span class="n">-ExecutionPolicy</span> <span class="n">Bypass</span> <span class="o">-File</span> <span class="p">.\</span><span class="n">deploy</span><span class="p">\</span><span class="nb">install-webbridge</span><span class="p">.</span><span class="n">ps1</span>
+<pre><code class="language-powershell"># 1. 安装 Kimi WebBridge 扩展 + 桥接服务
+powershell -ExecutionPolicy Bypass -File .\deploy\install-webbridge.ps1
 
-<span class="c"># 2. 确保 Chrome 常开 + 登录小红书</span>
-</code></pre></div>
-
+# 2. 确保 Chrome 常开 + 登录小红书
+</code></pre>
 <p><strong>WSL2 端</strong>:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1"># 1. 克隆插件</span>
-git<span class="w"> </span>clone<span class="w"> </span>&lt;repo&gt;<span class="w"> </span>~/.hermes/plugins/xhs
+<pre><code class="language-bash"># 1. 克隆插件
+git clone &lt;repo&gt; ~/.hermes/plugins/xhs
 
-<span class="c1"># 2. 一键安装</span>
-<span class="nb">cd</span><span class="w"> </span>~/.hermes/plugins/xhs<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>bash<span class="w"> </span>deploy/install.sh
+# 2. 一键安装
+cd ~/.hermes/plugins/xhs &amp;&amp; bash deploy/install.sh
 
-<span class="c1"># 3. 首次配置账号</span>
-hermes<span class="w">     </span><span class="c1"># 启动对话，然后:</span>
-<span class="c1"># xhs_account_manager(action=&quot;detect&quot;)  确认昵称</span>
-<span class="c1"># xhs_account_manager(action=&quot;add&quot;, key=&quot;main&quot;, nickname=&quot;XXX&quot;, linked_creator=&quot;王童&quot;)</span>
-<span class="c1"># xhs_account_manager(action=&quot;save_state&quot;, key=&quot;main&quot;)</span>
-</code></pre></div>
-
+# 3. 首次配置账号
+hermes     # 启动对话，然后:
+# xhs_account_manager(action=&quot;detect&quot;)  确认昵称
+# xhs_account_manager(action=&quot;add&quot;, key=&quot;main&quot;, nickname=&quot;XXX&quot;, linked_creator=&quot;王童&quot;)
+# xhs_account_manager(action=&quot;save_state&quot;, key=&quot;main&quot;)
+</code></pre>
 <h3>5.3 生产环境要求</h3>
 <ul>
 <li>Windows 电源设置"永不睡眠"</li>
@@ -440,14 +333,12 @@ hermes<span class="w">     </span><span class="c1"># 启动对话，然后:</spa
 <h3>已完成 ✅</h3>
 <ul>
 <li>[x] 7 个核心工具开发</li>
-<li>[x] 10 个技能文档</li>
-<li>[x] EHR 职位发布对接（脚本就绪）</li>
+<li>[x] 9 个技能文档</li>
 <li>[x] 安全删帖</li>
 </ul>
 <h3>进行中 🔄</h3>
 <ul>
 <li>[ ] Cron 定时任务搭建</li>
-<li>[ ] EHR 发布全流程联调</li>
 </ul>
 <h3>待开发 📋</h3>
 <ul>
