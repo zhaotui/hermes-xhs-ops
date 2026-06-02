@@ -5,8 +5,8 @@ set -e
 # 用法: bash install.sh [WebBridge IP]
 # 用 git clone/pull + 账号密码拉取
 
-GIT_URL="http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops.git"
-BRANCH="main"
+GIT_URL="https://github.com/zhaotui/hermes-xhs-ops.git"
+BRANCH="opensource"
 INSTALL_DIR="$HOME/.hermes/plugins/xhs"
 
 # 检查 git

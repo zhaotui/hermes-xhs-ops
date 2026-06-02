@@ -4,8 +4,8 @@
 
 set -e
 
-GIT_URL="http://zhaorui%40weops.com:zxcvbnm%2C.%2F@192.168.8.251:8080/hr/xhs-ops.git"
-BRANCH="main"
+GIT_URL="https://github.com/zhaotui/hermes-xhs-ops.git"
+BRANCH="opensource"
 INSTALL_DIR="$HOME/.hermes/plugins/xhs"
 
 echo "XHS Ops 更新中..."
